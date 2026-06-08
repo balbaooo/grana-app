@@ -1,809 +1,719 @@
-/* ============================================
-   GRANA — app.js
-   Lógica principal do aplicativo de finanças
-   ============================================ */
-
 'use strict';
 
 // ============================================
-// CONFIGURAÇÕES E DADOS PADRÃO
+// CONSTANTES
 // ============================================
 
-/** Categorias padrão com emoji e cor */
-const CATEGORIAS = [
-  { id: 'alimentacao', nome: 'Alimentação',    emoji: '🍽️', cor: '#ff9f43' },
-  { id: 'delivery',    nome: 'iFood/Delivery', emoji: '🛵', cor: '#ee5a24' },
-  { id: 'transporte',  nome: 'Transporte',     emoji: '🚌', cor: '#4cc9f0' },
-  { id: 'lazer',       nome: 'Lazer',          emoji: '🎮', cor: '#b57bee' },
-  { id: 'assinaturas', nome: 'Assinaturas',    emoji: '📱', cor: '#00e676' },
-  { id: 'saude',       nome: 'Saúde',          emoji: '💊', cor: '#ff4d6d' },
-  { id: 'educacao',    nome: 'Educação',        emoji: '📚', cor: '#ffd166' },
-  { id: 'casa',        nome: 'Casa',           emoji: '🏠', cor: '#26de81' },
-  { id: 'outros',      nome: 'Outros',         emoji: '📦', cor: '#9090a8' },
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+const EMOJIS = ['🍔','🛒','🚌','🚗','🏋️','🎮','🎬','✈️','🏠','💊',
+                '📱','🎓','👕','💄','🐾','☕','🍺','🎵','💡','🔧',
+                '💰','📦','🎁','🌿','🏦','🛵','🍕','🍣','🧴','⚽'];
+
+const CORES = ['#ff6b00','#f59e0b','#22c55e','#3b82f6','#8b5cf6',
+               '#ec4899','#ef4444','#14b8a6','#f97316','#6366f1',
+               '#84cc16','#06b6d4','#a855f7','#e11d48','#0ea5e9'];
+
+const CATS_PADRAO = [
+  { id:'alimentacao', nome:'Alimentação',  emoji:'🍔', cor:'#f59e0b', limite:0 },
+  { id:'transporte',  nome:'Transporte',   emoji:'🚌', cor:'#3b82f6', limite:0 },
+  { id:'lazer',       nome:'Lazer',        emoji:'🎮', cor:'#8b5cf6', limite:0 },
+  { id:'saude',       nome:'Saúde',        emoji:'💊', cor:'#ef4444', limite:0 },
+  { id:'casa',        nome:'Casa',         emoji:'🏠', cor:'#22c55e', limite:0 },
+  { id:'outros',      nome:'Outros',       emoji:'📦', cor:'#888',    limite:0 },
 ];
 
-/** Nomes dos meses em português */
-const MESES = [
-  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
-];
+const KEYS = {
+  lancamentos: 'grana2_lancamentos',
+  perfil:      'grana2_perfil',
+  cartao:      'grana2_cartao',
+  categorias:  'grana2_categorias',
+};
 
 // ============================================
-// ESTADO DO APLICATIVO
+// ESTADO
 // ============================================
 
 let estado = {
-  mesAtual: new Date().getMonth(),
-  anoAtual: new Date().getFullYear(),
-  paginaAtual: 'home',
-  edicaoId: null,
+  mes: new Date().getMonth(),
+  ano: new Date().getFullYear(),
+  pagina: 'home',
+  tipoLanc: 'saida',
+  catSel: '',
   excluirId: null,
-  tipoLancamento: 'saida',
-  categoriaSelecionada: 'outros',
-  filtroLancamentos: 'todos',
+  excluirTipo: null, // 'lancamento' | 'categoria'
+  editandoCatId: null,
+  emojiSel: EMOJIS[0],
+  corSel: CORES[0],
+  filtro: 'todos',
 };
 
 // ============================================
-// CHAVES DO LOCALSTORAGE
+// STORAGE
 // ============================================
 
-const KEYS = {
-  lancamentos: 'grana_lancamentos',
-  perfil:      'grana_perfil',
-  metas:       'grana_metas',
-  cartao:      'grana_cartao',
-};
+function get(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; }
+  catch(e) { return def; }
+}
+function set(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+function getLancs()  { return get(KEYS.lancamentos, []); }
+function setLancs(v) { set(KEYS.lancamentos, v); }
+function getPerfil() { return get(KEYS.perfil, {nome:'Usuário', renda:0}); }
+function setPerfil(v){ set(KEYS.perfil, v); }
+function getCartao() { return get(KEYS.cartao, {nome:'Meu Cartão', limite:0, vencimento:10}); }
+function setCartao(v){ set(KEYS.cartao, v); }
+
+function getCats() {
+  const saved = get(KEYS.categorias, null);
+  if (!saved) { set(KEYS.categorias, CATS_PADRAO); return CATS_PADRAO; }
+  return saved;
+}
+function setCats(v) { set(KEYS.categorias, v); }
 
 // ============================================
-// HELPERS DE LOCALSTORAGE
+// HELPERS
 // ============================================
 
-function getLancamentos() {
-  try { return JSON.parse(localStorage.getItem(KEYS.lancamentos) || '[]'); }
-  catch(e) { return []; }
+function fmtBRL(v) {
+  return v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 }
-
-function setLancamentos(arr) {
-  localStorage.setItem(KEYS.lancamentos, JSON.stringify(arr));
+function fmtData(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return d+'/'+m+'/'+y;
 }
+function hoje() { return new Date().toISOString().slice(0,10); }
+function gerarId() { return Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
 
-function getPerfil() {
-  try { return JSON.parse(localStorage.getItem(KEYS.perfil) || '{"nome":"Usuário","renda":0}'); }
-  catch(e) { return {nome:'Usuário',renda:0}; }
-}
-
-function setPerfil(p) {
-  localStorage.setItem(KEYS.perfil, JSON.stringify(p));
-}
-
-function getMetas() {
-  try { return JSON.parse(localStorage.getItem(KEYS.metas) || '{}'); }
-  catch(e) { return {}; }
-}
-
-function setMetas(m) {
-  localStorage.setItem(KEYS.metas, JSON.stringify(m));
-}
-
-function getCartao() {
-  try { return JSON.parse(localStorage.getItem(KEYS.cartao) || '{"nome":"","limite":0,"vencimento":10}'); }
-  catch(e) { return {nome:'',limite:0,vencimento:10}; }
-}
-
-function setCartao(c) {
-  localStorage.setItem(KEYS.cartao, JSON.stringify(c));
-}
-
-// ============================================
-// FORMATADORES
-// ============================================
-
-function formatBRL(valor) {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatData(isoDate) {
-  if (!isoDate) return '';
-  const [y, m, d] = isoDate.split('-');
-  return d + '/' + m + '/' + y;
-}
-
-function hojeISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function chaveAtual() {
-  return (estado.mesAtual + 1) + '-' + estado.anoAtual;
-}
-
-// ============================================
-// FILTRAGEM DE LANÇAMENTOS
-// ============================================
-
-function getLancamentosMes() {
-  const todos = getLancamentos();
-  return todos.filter(function(l) {
-    const parts = l.data.split('-');
-    const y = parseInt(parts[0]);
-    const m = parseInt(parts[1]);
-    return m === estado.mesAtual + 1 && y === estado.anoAtual;
+function getLancsMes() {
+  return getLancs().filter(function(l) {
+    const p = l.data.split('-');
+    return parseInt(p[1]) === estado.mes+1 && parseInt(p[0]) === estado.ano;
   });
-}
-
-// ============================================
-// GERADOR DE ID
-// ============================================
-function gerarId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
 // ============================================
 // TOAST
 // ============================================
-let toastTimer = null;
-
-function showToast(msg, tipo) {
+let toastT = null;
+function toast(msg) {
   const el = document.getElementById('toast');
   if (!el) return;
   el.textContent = msg;
-  el.style.borderColor = tipo === 'erro' ? 'var(--red)' : 'var(--border2)';
   el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2800);
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ el.classList.remove('show'); }, 2500);
 }
 
 // ============================================
-// NAVEGAÇÃO ENTRE PÁGINAS
+// NAVEGAÇÃO
 // ============================================
-
-function navegar(pagina) {
-  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
-  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-
-  var pg = document.getElementById('page-' + pagina);
+function navegar(pag) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  const pg = document.getElementById('page-'+pag);
   if (pg) pg.classList.add('active');
-
-  var ni = document.querySelector('.nav-item[data-page="' + pagina + '"]');
-  if (ni) ni.classList.add('active');
-
-  estado.paginaAtual = pagina;
-
-  var pc = document.getElementById('pages-container');
-  if (pc) pc.scrollTop = 0;
+  const nb = document.querySelector('.nav-btn[data-page="'+pag+'"]');
+  if (nb) nb.classList.add('active');
+  estado.pagina = pag;
+  document.querySelector('.content') && (document.querySelector('#page-'+pag+' .content').scrollTop = 0);
 }
 
 // ============================================
-// ATUALIZAÇÃO DO MÊS
+// MÊS
 // ============================================
-
-function atualizarNavMes() {
-  var el = document.getElementById('month-label');
-  if (el) el.textContent = MESES[estado.mesAtual] + ' ' + estado.anoAtual;
+function updateMesHeader() {
+  const el = document.getElementById('header-month');
+  if (el) el.textContent = MESES[estado.mes]+' '+estado.ano;
 }
-
-function mesAnterior() {
-  estado.mesAtual--;
-  if (estado.mesAtual < 0) { estado.mesAtual = 11; estado.anoAtual--; }
-  atualizarNavMes();
-  renderizarTudo();
+function prevMes() {
+  estado.mes--;
+  if (estado.mes<0){ estado.mes=11; estado.ano--; }
+  updateMesHeader(); renderAll();
 }
-
-function proximoMes() {
-  estado.mesAtual++;
-  if (estado.mesAtual > 11) { estado.mesAtual = 0; estado.anoAtual++; }
-  atualizarNavMes();
-  renderizarTudo();
+function nextMes() {
+  estado.mes++;
+  if (estado.mes>11){ estado.mes=0; estado.ano++; }
+  updateMesHeader(); renderAll();
 }
 
 // ============================================
-// RENDERIZAÇÃO PRINCIPAL
+// RENDER ALL
 // ============================================
-
-function renderizarTudo() {
-  renderizarResumo();
-  renderizarMeta();
-  renderizarCategorias();
-  renderizarLancamentosRecentes();
-  renderizarLancamentosFull();
-  renderizarCartao();
+function renderAll() {
+  renderResumo();
+  renderCatGrid();
+  renderLancsRecentes();
+  renderLancsFull();
+  renderCartao();
 }
 
 // ============================================
-// RESUMO FINANCEIRO
+// RESUMO
 // ============================================
-
-function renderizarResumo() {
-  var lancamentos = getLancamentosMes();
-  var entradas = 0, saidas = 0;
-  lancamentos.forEach(function(l) {
-    if (l.tipo === 'entrada') entradas += l.valor;
-    else saidas += l.valor;
-  });
-  var saldo = entradas - saidas;
-
-  var elSaldo   = document.getElementById('saldo-mes');
-  var elEntrada = document.getElementById('total-entradas');
-  var elSaida   = document.getElementById('total-saidas');
-
-  if (elSaldo)   { elSaldo.textContent   = formatBRL(saldo);    elSaldo.classList.toggle('negativo', saldo < 0); }
-  if (elEntrada)   elEntrada.textContent = formatBRL(entradas);
-  if (elSaida)     elSaida.textContent   = formatBRL(saidas);
+function renderResumo() {
+  const ls = getLancsMes();
+  let ent=0, sai=0;
+  ls.forEach(function(l){ if(l.tipo==='entrada') ent+=l.valor; else sai+=l.valor; });
+  const saldo = ent-sai;
+  const elS = document.getElementById('saldo-mes');
+  const elE = document.getElementById('total-entradas');
+  const elD = document.getElementById('total-saidas');
+  if (elS){ elS.textContent=fmtBRL(saldo); elS.classList.toggle('negativo', saldo<0); }
+  if (elE) elE.textContent = fmtBRL(ent);
+  if (elD) elD.textContent = fmtBRL(sai);
 }
 
 // ============================================
-// META DE ECONOMIA
+// CATEGORIAS GRID
 // ============================================
+function renderCatGrid() {
+  const grid = document.getElementById('cat-grid');
+  if (!grid) return;
+  const cats = getCats();
+  const ls   = getLancsMes().filter(function(l){ return l.tipo==='saida'; });
 
-function renderizarMeta() {
-  var metas = getMetas();
-  var meta  = metas[chaveAtual()] || 0;
+  let html = '';
+  cats.forEach(function(cat) {
+    const total = ls.filter(function(l){ return l.catId===cat.id; })
+                    .reduce(function(s,l){ return s+l.valor; }, 0);
+    const limite = cat.limite || 0;
+    const pct    = limite>0 ? Math.min(100, (total/limite)*100) : 0;
+    const cor    = cat.cor || '#888';
+    const overLimit = limite>0 && total>limite;
 
-  var lancamentos = getLancamentosMes();
-  var entradas = 0, saidas = 0;
-  lancamentos.forEach(function(l) {
-    if (l.tipo === 'entrada') entradas += l.valor;
-    else saidas += l.valor;
-  });
-  var economizado = Math.max(0, entradas - saidas);
-  var pct = meta > 0 ? Math.min(100, (economizado / meta) * 100) : 0;
-
-  var elSaved  = document.getElementById('meta-saved');
-  var elTarget = document.getElementById('meta-target');
-  var elFill   = document.getElementById('progress-fill');
-  var elPct    = document.getElementById('meta-pct');
-  var elMsg    = document.getElementById('meta-msg');
-
-  if (elSaved)  elSaved.textContent  = formatBRL(economizado);
-  if (elTarget) elTarget.textContent = 'de ' + formatBRL(meta);
-  if (elFill)   elFill.style.width   = pct + '%';
-  if (elPct)    elPct.textContent    = Math.round(pct) + '%';
-
-  var msg = 'Defina uma meta!';
-  if (meta > 0) {
-    if (pct >= 100) msg = '🎉 Meta atingida!';
-    else if (pct >= 70) msg = 'Quase lá, continue!';
-    else if (pct >= 30) msg = 'Bom progresso!';
-    else msg = 'Você consegue!';
-  }
-  if (elMsg) elMsg.textContent = msg;
-}
-
-// ============================================
-// CATEGORIAS
-// ============================================
-
-function renderizarCategorias() {
-  var lancamentos = getLancamentosMes().filter(function(l) { return l.tipo === 'saida'; });
-  var container   = document.getElementById('categoria-list');
-  if (!container) return;
-
-  if (!lancamentos.length) {
-    container.innerHTML = '<div class="empty-state-small">Nenhum gasto ainda</div>';
-    return;
-  }
-
-  var grupos = {};
-  lancamentos.forEach(function(l) {
-    if (!grupos[l.categoria]) grupos[l.categoria] = { total: 0, count: 0 };
-    grupos[l.categoria].total += l.valor;
-    grupos[l.categoria].count++;
-  });
-
-  var totalGeral = 0;
-  Object.keys(grupos).forEach(function(k) { totalGeral += grupos[k].total; });
-
-  var ordenado = Object.keys(grupos).sort(function(a,b) { return grupos[b].total - grupos[a].total; });
-
-  container.innerHTML = ordenado.map(function(catId) {
-    var dados = grupos[catId];
-    var cat = CATEGORIAS.find(function(c) { return c.id === catId; }) || CATEGORIAS[CATEGORIAS.length - 1];
-    var pct = Math.round((dados.total / totalGeral) * 100);
-    return '<div class="categoria-item">' +
-      '<div class="cat-icon" style="background:' + cat.cor + '20">' + cat.emoji + '</div>' +
-      '<div class="cat-info"><span class="cat-name">' + cat.nome + '</span>' +
-      '<span class="cat-count">' + dados.count + ' lançamento' + (dados.count > 1 ? 's' : '') + '</span></div>' +
-      '<div class="cat-bar-wrap"><div class="cat-bar">' +
-      '<div class="cat-bar-fill" style="width:' + pct + '%;background:' + cat.cor + '"></div></div>' +
-      '<span class="cat-value">' + formatBRL(dados.total) + '</span></div></div>';
-  }).join('');
-}
-
-// ============================================
-// LANÇAMENTOS: RENDERIZAÇÃO
-// ============================================
-
-function htmlLancamento(l) {
-  var cat    = CATEGORIAS.find(function(c) { return c.id === l.categoria; }) || CATEGORIAS[CATEGORIAS.length - 1];
-  var sinal  = l.tipo === 'entrada' ? '+' : '−';
-  var classe = l.tipo === 'entrada' ? 'entrada' : 'saida';
-  var tagCartao = l.cartao ? '<span class="item-tag" style="background:var(--blue-dim);color:var(--blue)">💳 cartão</span>' : '';
-
-  return '<div class="lancamento-item" data-id="' + l.id + '">' +
-    '<div class="item-icon" style="background:' + cat.cor + '20">' + cat.emoji + '</div>' +
-    '<div class="item-info">' +
-    '<span class="item-desc">' + (l.descricao || cat.nome) + '</span>' +
-    '<div class="item-meta"><span>' + formatData(l.data) + '</span><span>•</span><span>' + cat.nome + '</span>' + tagCartao + '</div>' +
-    '</div>' +
-    '<span class="item-valor ' + classe + '">' + sinal + ' ' + formatBRL(l.valor) + '</span>' +
-    '<button class="item-delete" data-id="' + l.id + '" aria-label="Excluir">🗑</button>' +
+    html += '<div class="cat-card" data-cat="'+cat.id+'">' +
+      '<div class="cat-card-top">' +
+        '<div class="cat-emoji" style="background:'+cor+'20">'+cat.emoji+'</div>' +
+        '<button class="cat-card-edit" data-edit="'+cat.id+'" aria-label="Editar">✏️</button>' +
+      '</div>' +
+      '<span class="cat-card-name">'+cat.nome+'</span>' +
+      '<span class="cat-card-value" style="color:'+cor+'">'+fmtBRL(total)+'</span>' +
+      (limite>0
+        ? '<div class="cat-progress-bar"><div class="cat-progress-fill" style="width:'+pct+'%;background:'+(overLimit?'var(--red)':cor)+'"></div></div>' +
+          '<span class="cat-limit-text">'+(overLimit?'⚠️ acima do ':'')+'limite '+fmtBRL(limite)+'</span>'
+        : '<span class="cat-limit-text">Sem limite definido</span>') +
     '</div>';
-}
+  });
 
-function renderizarLancamentosRecentes() {
-  var lancamentos = getLancamentosMes()
-    .sort(function(a, b) { return b.data.localeCompare(a.data); })
-    .slice(0, 5);
-  var container = document.getElementById('lancamentos-recentes');
-  if (!container) return;
+  // Botão adicionar
+  html += '<div class="cat-card-add" id="btn-add-cat-card"><span>+</span><p>Nova categoria</p></div>';
 
-  if (!lancamentos.length) {
-    container.innerHTML = '<div class="empty-state"><span class="empty-icon">💸</span><p>Nenhum lançamento ainda.<br/>Toque no <strong>+</strong> para começar!</p></div>';
-    return;
-  }
-  container.innerHTML = lancamentos.map(htmlLancamento).join('');
-  bindDeleteButtons(container);
-}
+  grid.innerHTML = html;
 
-function renderizarLancamentosFull() {
-  var lancamentos = getLancamentosMes().sort(function(a, b) { return b.data.localeCompare(a.data); });
+  // Clique no card → lançar nessa categoria
+  grid.querySelectorAll('.cat-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('.cat-card-edit')) return;
+      abrirModalLanc('saida', card.dataset.cat);
+    });
+  });
 
-  if (estado.filtroLancamentos !== 'todos') {
-    lancamentos = lancamentos.filter(function(l) { return l.tipo === estado.filtroLancamentos; });
-  }
-
-  var container = document.getElementById('lancamentos-full');
-  if (!container) return;
-
-  if (!lancamentos.length) {
-    container.innerHTML = '<div class="empty-state"><span class="empty-icon">📋</span><p>Nenhum lançamento neste período.</p></div>';
-    return;
-  }
-  container.innerHTML = lancamentos.map(htmlLancamento).join('');
-  bindDeleteButtons(container);
-}
-
-function bindDeleteButtons(container) {
-  container.querySelectorAll('.item-delete').forEach(function(btn) {
+  // Clique editar
+  grid.querySelectorAll('.cat-card-edit').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
-      pedirConfirmacaoExclusao(btn.dataset.id);
+      abrirModalCat(btn.dataset.edit);
+    });
+  });
+
+  // Botão nova categoria
+  const addBtn = document.getElementById('btn-add-cat-card');
+  if (addBtn) addBtn.addEventListener('click', function(){ abrirModalCat(null); });
+}
+
+// ============================================
+// HTML DE UM LANÇAMENTO
+// ============================================
+function htmlLanc(l) {
+  const cats = getCats();
+  const cat  = cats.find(function(c){ return c.id===l.catId; }) || {emoji:'📦', cor:'#888', nome:'Outros'};
+  const sinal = l.tipo==='entrada' ? '+' : '−';
+  const cls   = l.tipo==='entrada' ? 'entrada' : 'saida';
+  const cartTag = l.cartao ? ' <span style="font-size:10px;opacity:0.7">💳</span>' : '';
+  return '<div class="item" data-id="'+l.id+'">' +
+    '<div class="item-icon" style="background:'+cat.cor+'20">'+cat.emoji+'</div>' +
+    '<div class="item-info">' +
+      '<span class="item-desc">'+(l.descricao||cat.nome)+cartTag+'</span>' +
+      '<span class="item-meta">'+fmtData(l.data)+' · '+cat.nome+'</span>' +
+    '</div>' +
+    '<span class="item-val '+cls+'">'+sinal+' '+fmtBRL(l.valor)+'</span>' +
+    '<button class="item-del" data-id="'+l.id+'" aria-label="Excluir">🗑</button>' +
+  '</div>';
+}
+
+function bindDelLancs(container) {
+  container.querySelectorAll('.item-del').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      estado.excluirId   = btn.dataset.id;
+      estado.excluirTipo = 'lancamento';
+      const l = getLancs().find(function(x){ return x.id===btn.dataset.id; });
+      const el = document.getElementById('confirm-text');
+      if (el && l) el.textContent = 'Excluir "'+( l.descricao||'lançamento')+'" ('+fmtBRL(l.valor)+')?';
+      document.getElementById('modal-confirm').classList.add('open');
     });
   });
 }
 
 // ============================================
-// CARTÃO DE CRÉDITO
+// LANÇAMENTOS RECENTES
 // ============================================
-
-function renderizarCartao() {
-  var cartao     = getCartao();
-  var lancamentos = getLancamentosMes().filter(function(l) { return l.tipo === 'saida' && l.cartao; });
-  var totalFatura = 0;
-  lancamentos.forEach(function(l) { totalFatura += l.valor; });
-
-  var elFatura = document.getElementById('cc-fatura');
-  var elLimite = document.getElementById('cc-limite');
-  if (elFatura) elFatura.textContent = formatBRL(totalFatura);
-  if (elLimite) elLimite.textContent = cartao.limite ? formatBRL(cartao.limite) : '—';
-
-  var ccBank = document.querySelector('.cc-bank');
-  if (ccBank && cartao.nome) ccBank.textContent = cartao.nome;
-
-  var elNome  = document.getElementById('cc-nome');
-  var elLimIn = document.getElementById('cc-limite-input');
-  var elVenc  = document.getElementById('cc-vencimento');
-  if (elNome)  elNome.value  = cartao.nome || '';
-  if (elLimIn) elLimIn.value = cartao.limite || '';
-  if (elVenc)  elVenc.value  = cartao.vencimento || '';
-
-  var container = document.getElementById('lancamentos-cartao');
-  if (!container) return;
-
-  if (!lancamentos.length) {
-    container.innerHTML = '<div class="empty-state-small">Nenhum gasto no cartão este mês</div>';
+function renderLancsRecentes() {
+  const el = document.getElementById('lancamentos-recentes');
+  if (!el) return;
+  const ls = getLancsMes().sort(function(a,b){ return b.data.localeCompare(a.data); }).slice(0,5);
+  if (!ls.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-icon">💸</span><p>Nenhum lançamento ainda.<br/>Toque em uma categoria ou no <strong>+</strong></p></div>';
     return;
   }
-  container.innerHTML = lancamentos.sort(function(a,b) { return b.data.localeCompare(a.data); }).map(htmlLancamento).join('');
-  bindDeleteButtons(container);
+  el.innerHTML = ls.map(htmlLanc).join('');
+  bindDelLancs(el);
+}
+
+// ============================================
+// LANÇAMENTOS FULL
+// ============================================
+function renderLancsFull() {
+  const el = document.getElementById('lancamentos-full');
+  if (!el) return;
+  let ls = getLancsMes().sort(function(a,b){ return b.data.localeCompare(a.data); });
+  if (estado.filtro !== 'todos') ls = ls.filter(function(l){ return l.tipo===estado.filtro; });
+  if (!ls.length) {
+    el.innerHTML = '<div class="empty-state"><span class="empty-icon">📋</span><p>Nenhum lançamento neste período.</p></div>';
+    return;
+  }
+  el.innerHTML = ls.map(htmlLanc).join('');
+  bindDelLancs(el);
+}
+
+// ============================================
+// CARTÃO
+// ============================================
+function renderCartao() {
+  const cartao = getCartao();
+  const ls = getLancsMes().filter(function(l){ return l.tipo==='saida' && l.cartao; });
+  const fat = ls.reduce(function(s,l){ return s+l.valor; }, 0);
+
+  const elN = document.getElementById('cc-nome-display');
+  const elF = document.getElementById('cc-fatura-val');
+  const elL = document.getElementById('cc-limite-val');
+  const elV = document.getElementById('cc-venc-val');
+  if (elN) elN.textContent = cartao.nome || 'Meu Cartão';
+  if (elF) elF.textContent = fmtBRL(fat);
+  if (elL) elL.textContent = cartao.limite ? fmtBRL(cartao.limite) : '—';
+  if (elV) elV.textContent = cartao.vencimento ? 'dia '+cartao.vencimento : '—';
+
+  const elNI = document.getElementById('cc-nome');
+  const elLI = document.getElementById('cc-limite-input');
+  const elVI = document.getElementById('cc-vencimento');
+  if (elNI) elNI.value = cartao.nome||'';
+  if (elLI) elLI.value = cartao.limite||'';
+  if (elVI) elVI.value = cartao.vencimento||'';
+
+  const elC = document.getElementById('lancamentos-cartao');
+  if (!elC) return;
+  if (!ls.length) { elC.innerHTML='<div class="empty-sm">Nenhum gasto no cartão este mês</div>'; return; }
+  elC.innerHTML = ls.sort(function(a,b){ return b.data.localeCompare(a.data); }).map(htmlLanc).join('');
+  bindDelLancs(elC);
 }
 
 // ============================================
 // MODAL: LANÇAMENTO
 // ============================================
+function abrirModalLanc(tipo, catId) {
+  tipo  = tipo  || 'saida';
+  catId = catId || (getCats()[0] || {id:'outros'}).id;
+  estado.tipoLanc = tipo;
+  estado.catSel   = catId;
 
-function abrirModalLancamento(tipo) {
-  tipo = tipo || 'saida';
-  var elValor = document.getElementById('input-valor');
-  var elDesc  = document.getElementById('input-descricao');
-  var elData  = document.getElementById('input-data');
-  var elCart  = document.getElementById('input-cartao');
+  const elV = document.getElementById('input-valor');
+  const elD = document.getElementById('input-descricao');
+  const elDt= document.getElementById('input-data');
+  const elC = document.getElementById('input-cartao');
+  if (elV)  elV.value   = '';
+  if (elD)  elD.value   = '';
+  if (elDt) elDt.value  = hoje();
+  if (elC)  elC.checked = false;
 
-  if (elValor) elValor.value   = '';
-  if (elDesc)  elDesc.value    = '';
-  if (elData)  elData.value    = hojeISO();
-  if (elCart)  elCart.checked  = false;
-  estado.edicaoId = null;
+  setTipoLanc(tipo);
+  renderChipsCats();
+  selCat(catId);
 
-  setTipoLancamento(tipo);
-  selecionarCategoria('outros');
-
-  var modal = document.getElementById('modal-lancamento');
-  if (modal) modal.classList.add('open');
-
-  setTimeout(function() { if (elValor) elValor.focus(); }, 300);
+  document.getElementById('modal-lancamento').classList.add('open');
+  setTimeout(function(){ if(elV) elV.focus(); }, 300);
 }
 
-function fecharModalLancamento() {
-  var modal = document.getElementById('modal-lancamento');
-  if (modal) modal.classList.remove('open');
+function fecharModalLanc() {
+  document.getElementById('modal-lancamento').classList.remove('open');
 }
 
-function setTipoLancamento(tipo) {
-  estado.tipoLancamento = tipo;
-  document.querySelectorAll('.tipo-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.tipo === tipo);
+function setTipoLanc(tipo) {
+  estado.tipoLanc = tipo;
+  document.querySelectorAll('.tipo-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.tipo===tipo);
   });
 }
 
-function selecionarCategoria(id) {
-  estado.categoriaSelecionada = id;
-  document.querySelectorAll('.cat-chip').forEach(function(chip) {
-    chip.classList.toggle('selected', chip.dataset.cat === id);
+function selCat(id) {
+  estado.catSel = id;
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.classList.toggle('selected', c.dataset.cat===id);
   });
 }
 
-function renderizarChipsCategorias() {
-  var container = document.getElementById('categoria-chips');
-  if (!container) return;
-
-  container.innerHTML = CATEGORIAS.map(function(cat) {
-    return '<button class="cat-chip" data-cat="' + cat.id + '" type="button"><span>' + cat.emoji + '</span> ' + cat.nome + '</button>';
+function renderChipsCats() {
+  const el = document.getElementById('cat-chips');
+  if (!el) return;
+  const cats = getCats();
+  el.innerHTML = cats.map(function(c){
+    return '<button class="chip" data-cat="'+c.id+'" type="button">'+c.emoji+' '+c.nome+'</button>';
   }).join('');
-
-  container.querySelectorAll('.cat-chip').forEach(function(chip) {
-    chip.addEventListener('click', function() { selecionarCategoria(chip.dataset.cat); });
+  el.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){ selCat(chip.dataset.cat); });
   });
-
-  selecionarCategoria('outros');
+  selCat(estado.catSel || (cats[0]||{id:''}).id);
 }
 
-function salvarLancamento() {
-  var elValor = document.getElementById('input-valor');
-  var elDesc  = document.getElementById('input-descricao');
-  var elData  = document.getElementById('input-data');
-  var elCart  = document.getElementById('input-cartao');
+function salvarLanc() {
+  const elV  = document.getElementById('input-valor');
+  const elD  = document.getElementById('input-descricao');
+  const elDt = document.getElementById('input-data');
+  const elC  = document.getElementById('input-cartao');
 
-  var valor   = parseFloat(elValor ? elValor.value : 0);
-  var descricao = elDesc ? elDesc.value.trim() : '';
-  var data    = elData ? elData.value : '';
-  var cartao  = elCart ? elCart.checked : false;
+  const valor = parseFloat(elV ? elV.value : 0);
+  const data  = elDt ? elDt.value : '';
 
-  if (!valor || valor <= 0) {
-    showToast('Informe um valor válido', 'erro');
-    if (elValor) elValor.focus();
-    return;
-  }
-  if (!data) {
-    showToast('Informe uma data', 'erro');
-    return;
-  }
+  if (!valor || valor<=0) { toast('Informe um valor válido'); if(elV) elV.focus(); return; }
+  if (!data)               { toast('Informe uma data'); return; }
 
-  var todos = getLancamentos();
-
-  if (estado.edicaoId) {
-    var idx = -1;
-    todos.forEach(function(l, i) { if (l.id === estado.edicaoId) idx = i; });
-    if (idx !== -1) {
-      todos[idx].valor     = valor;
-      todos[idx].descricao = descricao;
-      todos[idx].data      = data;
-      todos[idx].cartao    = cartao;
-      todos[idx].tipo      = estado.tipoLancamento;
-      todos[idx].categoria = estado.categoriaSelecionada;
-    }
-    showToast('Lançamento atualizado ✓');
-  } else {
-    todos.push({
-      id: gerarId(),
-      tipo: estado.tipoLancamento,
-      valor: valor,
-      descricao: descricao,
-      categoria: estado.categoriaSelecionada,
-      data: data,
-      cartao: cartao,
-      criadoEm: new Date().toISOString(),
-    });
-    showToast(estado.tipoLancamento === 'saida' ? 'Gasto registrado ✓' : 'Entrada registrada ✓');
-  }
-
-  setLancamentos(todos);
-  fecharModalLancamento();
-  renderizarTudo();
-
+  const ls = getLancs();
+  ls.push({
+    id:       gerarId(),
+    tipo:     estado.tipoLanc,
+    valor:    valor,
+    descricao:(elD ? elD.value.trim() : ''),
+    catId:    estado.catSel || 'outros',
+    data:     data,
+    cartao:   elC ? elC.checked : false,
+    criadoEm: new Date().toISOString(),
+  });
+  setLancs(ls);
+  fecharModalLanc();
+  renderAll();
+  toast(estado.tipoLanc==='saida' ? 'Gasto registrado ✓' : 'Entrada registrada ✓');
   if (navigator.vibrate) navigator.vibrate(40);
 }
 
 // ============================================
-// EXCLUSÃO DE LANÇAMENTO
+// MODAL: CATEGORIA
 // ============================================
+function abrirModalCat(catId) {
+  estado.editandoCatId = catId;
+  const titulo = document.getElementById('modal-cat-title');
+  const btnEx  = document.getElementById('btn-excluir-categoria');
 
-function pedirConfirmacaoExclusao(id) {
-  estado.excluirId = id;
-  var todos = getLancamentos();
-  var l = null;
-  todos.forEach(function(item) { if (item.id === id) l = item; });
-  if (l) {
-    var el = document.getElementById('confirm-text');
-    if (el) el.textContent = 'Excluir "' + (l.descricao || l.categoria) + '" (' + formatBRL(l.valor) + ')?';
+  if (catId) {
+    if (titulo) titulo.textContent = 'Editar categoria';
+    if (btnEx)  btnEx.style.display = 'block';
+    const cat = getCats().find(function(c){ return c.id===catId; });
+    if (cat) {
+      const elN = document.getElementById('cat-nome-input');
+      const elL = document.getElementById('cat-limite-input');
+      if (elN) elN.value = cat.nome;
+      if (elL) elL.value = cat.limite||'';
+      estado.emojiSel = cat.emoji;
+      estado.corSel   = cat.cor;
+    }
+  } else {
+    if (titulo) titulo.textContent = 'Nova categoria';
+    if (btnEx)  btnEx.style.display = 'none';
+    const elN = document.getElementById('cat-nome-input');
+    const elL = document.getElementById('cat-limite-input');
+    if (elN) elN.value = '';
+    if (elL) elL.value = '';
+    estado.emojiSel = EMOJIS[0];
+    estado.corSel   = CORES[0];
   }
-  var modal = document.getElementById('modal-confirm');
-  if (modal) modal.classList.add('open');
+
+  renderEmojiGrid();
+  renderColorGrid();
+  document.getElementById('modal-categoria').classList.add('open');
 }
 
+function fecharModalCat() {
+  document.getElementById('modal-categoria').classList.remove('open');
+}
+
+function renderEmojiGrid() {
+  const el = document.getElementById('emoji-grid');
+  if (!el) return;
+  el.innerHTML = EMOJIS.map(function(e){
+    return '<button class="emoji-opt'+(e===estado.emojiSel?' selected':'')+'" data-e="'+e+'" type="button">'+e+'</button>';
+  }).join('');
+  el.querySelectorAll('.emoji-opt').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      estado.emojiSel = btn.dataset.e;
+      el.querySelectorAll('.emoji-opt').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    });
+  });
+}
+
+function renderColorGrid() {
+  const el = document.getElementById('color-grid');
+  if (!el) return;
+  el.innerHTML = CORES.map(function(c){
+    return '<div class="color-opt'+(c===estado.corSel?' selected':'')+'" data-cor="'+c+'" style="background:'+c+'"></div>';
+  }).join('');
+  el.querySelectorAll('.color-opt').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      estado.corSel = btn.dataset.cor;
+      el.querySelectorAll('.color-opt').forEach(function(b){ b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    });
+  });
+}
+
+function salvarCat() {
+  const elN = document.getElementById('cat-nome-input');
+  const elL = document.getElementById('cat-limite-input');
+  const nome  = elN ? elN.value.trim() : '';
+  const limite = parseFloat(elL ? elL.value : 0) || 0;
+
+  if (!nome) { toast('Informe o nome da categoria'); if(elN) elN.focus(); return; }
+
+  const cats = getCats();
+  if (estado.editandoCatId) {
+    const idx = cats.findIndex(function(c){ return c.id===estado.editandoCatId; });
+    if (idx!==-1) {
+      cats[idx].nome   = nome;
+      cats[idx].emoji  = estado.emojiSel;
+      cats[idx].cor    = estado.corSel;
+      cats[idx].limite = limite;
+    }
+    toast('Categoria atualizada ✓');
+  } else {
+    cats.push({ id:gerarId(), nome:nome, emoji:estado.emojiSel, cor:estado.corSel, limite:limite });
+    toast('Categoria criada ✓');
+  }
+  setCats(cats);
+  fecharModalCat();
+  renderAll();
+}
+
+function excluirCat() {
+  if (!estado.editandoCatId) return;
+  estado.excluirId   = estado.editandoCatId;
+  estado.excluirTipo = 'categoria';
+  const cat = getCats().find(function(c){ return c.id===estado.editandoCatId; });
+  const el  = document.getElementById('confirm-text');
+  if (el && cat) el.textContent = 'Excluir a categoria "'+cat.nome+'"? Os lançamentos não serão apagados.';
+  fecharModalCat();
+  document.getElementById('modal-confirm').classList.add('open');
+}
+
+// ============================================
+// CONFIRMAÇÃO EXCLUSÃO
+// ============================================
 function confirmarExclusao() {
-  if (!estado.excluirId) return;
-  var todos = getLancamentos().filter(function(l) { return l.id !== estado.excluirId; });
-  setLancamentos(todos);
-  estado.excluirId = null;
-  var modal = document.getElementById('modal-confirm');
-  if (modal) modal.classList.remove('open');
-  renderizarTudo();
-  showToast('Lançamento excluído');
-  if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
-}
-
-// ============================================
-// META
-// ============================================
-
-function abrirModalMeta() {
-  var metas = getMetas();
-  var meta  = metas[chaveAtual()] || '';
-  var el = document.getElementById('input-meta');
-  if (el) el.value = meta;
-  var modal = document.getElementById('modal-meta');
-  if (modal) modal.classList.add('open');
-  setTimeout(function() { if (el) el.focus(); }, 300);
-}
-
-function salvarMeta() {
-  var el = document.getElementById('input-meta');
-  var valor = parseFloat(el ? el.value : 0);
-  if (!valor || valor <= 0) {
-    showToast('Informe um valor válido', 'erro');
-    return;
+  if (estado.excluirTipo==='lancamento') {
+    const ls = getLancs().filter(function(l){ return l.id!==estado.excluirId; });
+    setLancs(ls);
+    toast('Lançamento excluído');
+  } else if (estado.excluirTipo==='categoria') {
+    const cats = getCats().filter(function(c){ return c.id!==estado.excluirId; });
+    setCats(cats);
+    toast('Categoria excluída');
   }
-  var metas = getMetas();
-  metas[chaveAtual()] = valor;
-  setMetas(metas);
-  var modal = document.getElementById('modal-meta');
-  if (modal) modal.classList.remove('open');
-  renderizarMeta();
-  showToast('Meta definida ✓');
-}
-
-// ============================================
-// CARTÃO: SALVAR CONFIG
-// ============================================
-
-function salvarCartao() {
-  var cartao = {
-    nome:       (document.getElementById('cc-nome') || {}).value || '',
-    limite:     parseFloat((document.getElementById('cc-limite-input') || {}).value) || 0,
-    vencimento: parseInt((document.getElementById('cc-vencimento') || {}).value) || 10,
-  };
-  setCartao(cartao);
-  renderizarCartao();
-  showToast('Cartão salvo ✓');
+  estado.excluirId = null;
+  estado.excluirTipo = null;
+  document.getElementById('modal-confirm').classList.remove('open');
+  renderAll();
+  if (navigator.vibrate) navigator.vibrate([30,20,30]);
 }
 
 // ============================================
 // PERFIL
 // ============================================
-
 function carregarPerfil() {
-  var perfil = getPerfil();
-  var elNome  = document.getElementById('input-nome');
-  var elRenda = document.getElementById('input-renda');
-  if (elNome)  elNome.value  = perfil.nome || '';
-  if (elRenda) elRenda.value = perfil.renda || '';
+  const p = getPerfil();
+  const elN  = document.getElementById('input-nome');
+  const elR  = document.getElementById('input-renda');
+  const elAv = document.getElementById('avatar');
+  const elPA = document.getElementById('perfil-avatar-big');
+  const elPN = document.getElementById('perfil-nome-big');
+  const elG  = document.getElementById('greeting');
 
-  var inicial = (perfil.nome || 'U').charAt(0).toUpperCase();
-  var elAvatar = document.getElementById('avatar');
-  var elPAvatar = document.querySelector('.perfil-avatar');
-  var elPNome   = document.getElementById('perfil-nome-display');
-  if (elAvatar)  elAvatar.textContent  = inicial;
-  if (elPAvatar) elPAvatar.textContent = inicial;
-  if (elPNome)   elPNome.textContent   = perfil.nome || 'Usuário';
+  if (elN)  elN.value   = p.nome||'';
+  if (elR)  elR.value   = p.renda||'';
+  const ini = (p.nome||'U').charAt(0).toUpperCase();
+  if (elAv) elAv.textContent = ini;
+  if (elPA) elPA.textContent = ini;
+  if (elPN) elPN.textContent = p.nome||'Usuário';
+  if (elG)  elG.textContent  = 'Olá, '+(p.nome||'usuário')+'! 👋';
 }
 
 function salvarPerfil() {
-  var elNome  = document.getElementById('input-nome');
-  var elRenda = document.getElementById('input-renda');
-  var nome  = elNome  ? elNome.value.trim()  : '';
-  var renda = elRenda ? parseFloat(elRenda.value) || 0 : 0;
-  setPerfil({ nome: nome || 'Usuário', renda: renda });
+  const elN = document.getElementById('input-nome');
+  const elR = document.getElementById('input-renda');
+  setPerfil({ nome: elN?elN.value.trim():'', renda: parseFloat(elR?elR.value:0)||0 });
   carregarPerfil();
-  showToast('Perfil salvo ✓');
+  toast('Perfil salvo ✓');
 }
 
 // ============================================
-// EXPORTAR DADOS
+// CARTÃO: SALVAR
 // ============================================
+function salvarCartao() {
+  setCartao({
+    nome:       (document.getElementById('cc-nome')||{}).value||'Meu Cartão',
+    limite:     parseFloat((document.getElementById('cc-limite-input')||{}).value)||0,
+    vencimento: parseInt((document.getElementById('cc-vencimento')||{}).value)||10,
+  });
+  renderCartao();
+  toast('Cartão salvo ✓');
+}
 
-function exportarDados() {
-  var dados = {
-    lancamentos: getLancamentos(),
-    perfil:      getPerfil(),
-    metas:       getMetas(),
-    cartao:      getCartao(),
-    exportadoEm: new Date().toISOString(),
-  };
-  var blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href     = url;
-  a.download = 'grana-backup-' + hojeISO() + '.json';
-  a.click();
+// ============================================
+// EXPORTAR / LIMPAR
+// ============================================
+function exportar() {
+  const dados = { lancamentos:getLancs(), perfil:getPerfil(), cartao:getCartao(), categorias:getCats(), em:new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(dados,null,2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download='grana-backup-'+hoje()+'.json'; a.click();
   URL.revokeObjectURL(url);
-  showToast('Dados exportados ✓');
+  toast('Dados exportados ✓');
 }
 
-// ============================================
-// LIMPAR DADOS
-// ============================================
-
-function limparDados() {
-  if (!confirm('Tem certeza? Todos os dados serão apagados permanentemente.')) return;
+function limpar() {
+  if (!confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')) return;
   localStorage.clear();
-  showToast('Dados apagados');
-  setTimeout(function() { location.reload(); }, 800);
+  toast('Dados apagados');
+  setTimeout(function(){ location.reload(); }, 800);
 }
 
 // ============================================
-// FECHAMENTO DE MODAIS AO CLICAR FORA
+// MODAL: FECHAR AO CLICAR FORA
 // ============================================
-
-function fecharModalAoClicarFora(e) {
-  if (e.target.classList.contains('modal-overlay')) {
-    e.target.classList.remove('open');
-  }
+function bindOverlay(id) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(e){
+    if (e.target===el) el.classList.remove('open');
+  });
 }
 
 // ============================================
-// INICIALIZAÇÃO
+// INIT
 // ============================================
-
 function init() {
-  // Esconde splash e mostra app imediatamente
-  var splash = document.getElementById('splash');
-  var app    = document.getElementById('app');
-
+  // Splash
+  const splash = document.getElementById('splash');
   if (splash) {
-    setTimeout(function() {
-      splash.style.opacity = '0';
-      splash.style.transition = 'opacity 0.4s ease';
-      setTimeout(function() {
-        splash.style.display = 'none';
-      }, 400);
-    }, 1200);
+    setTimeout(function(){
+      splash.classList.add('hide');
+      setTimeout(function(){ splash.style.display='none'; }, 400);
+    }, 1000);
   }
 
-  if (app) {
-    app.classList.remove('hidden');
-  }
+  // Mês
+  updateMesHeader();
+  const elPrev = document.getElementById('prev-month');
+  const elNext = document.getElementById('next-month');
+  if (elPrev) elPrev.addEventListener('click', prevMes);
+  if (elNext) elNext.addEventListener('click', nextMes);
 
-  // Gera chips de categoria
-  renderizarChipsCategorias();
+  // Nav
+  document.querySelectorAll('.nav-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ navegar(btn.dataset.page); });
+  });
+  const av = document.getElementById('avatar-btn');
+  if (av) av.addEventListener('click', function(){ navegar('perfil'); });
 
-  // Nav: mês
-  var btnPrev = document.getElementById('prev-month');
-  var btnNext = document.getElementById('next-month');
-  if (btnPrev) btnPrev.addEventListener('click', mesAnterior);
-  if (btnNext) btnNext.addEventListener('click', proximoMes);
-  atualizarNavMes();
+  // FAB
+  const fab = document.getElementById('fab');
+  if (fab) fab.addEventListener('click', function(){ abrirModalLanc('saida'); });
 
-  // Nav: páginas
-  document.querySelectorAll('.nav-item').forEach(function(btn) {
-    btn.addEventListener('click', function() { navegar(btn.dataset.page); });
+  // Modal lançamento
+  const closeL = document.getElementById('close-lancamento');
+  const saveL  = document.getElementById('btn-salvar-lancamento');
+  if (closeL) closeL.addEventListener('click', fecharModalLanc);
+  if (saveL)  saveL.addEventListener('click', salvarLanc);
+  bindOverlay('modal-lancamento');
+
+  document.querySelectorAll('.tipo-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ setTipoLanc(btn.dataset.tipo); });
   });
 
-  // Avatar → perfil
-  var avatarBtn = document.getElementById('avatar-btn');
-  if (avatarBtn) avatarBtn.addEventListener('click', function() { navegar('perfil'); });
+  // Modal categoria
+  const btnNovaCat = document.getElementById('btn-nova-categoria');
+  const closeCat   = document.getElementById('close-categoria');
+  const saveCat    = document.getElementById('btn-salvar-categoria');
+  const excCat     = document.getElementById('btn-excluir-categoria');
+  if (btnNovaCat) btnNovaCat.addEventListener('click', function(){ abrirModalCat(null); });
+  if (closeCat)   closeCat.addEventListener('click', fecharModalCat);
+  if (saveCat)    saveCat.addEventListener('click', salvarCat);
+  if (excCat)     excCat.addEventListener('click', excluirCat);
+  bindOverlay('modal-categoria');
 
-  // FAB → abre modal
-  var fab = document.getElementById('fab');
-  if (fab) fab.addEventListener('click', function() { abrirModalLancamento('saida'); });
-
-  // Modal: lançamento
-  var closeL = document.getElementById('close-lancamento');
-  var saveL  = document.getElementById('btn-salvar-lancamento');
-  var modalL = document.getElementById('modal-lancamento');
-  if (closeL) closeL.addEventListener('click', fecharModalLancamento);
-  if (saveL)  saveL.addEventListener('click', salvarLancamento);
-  if (modalL) modalL.addEventListener('click', fecharModalAoClicarFora);
-
-  // Modal: tipo toggle
-  document.querySelectorAll('.tipo-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() { setTipoLancamento(btn.dataset.tipo); });
-  });
-
-  // Modal: meta
-  var btnMeta   = document.getElementById('btn-edit-meta');
-  var closeMeta = document.getElementById('close-meta');
-  var saveMeta  = document.getElementById('btn-salvar-meta');
-  var modalMeta = document.getElementById('modal-meta');
-  if (btnMeta)   btnMeta.addEventListener('click', abrirModalMeta);
-  if (closeMeta) closeMeta.addEventListener('click', function() { modalMeta && modalMeta.classList.remove('open'); });
-  if (saveMeta)  saveMeta.addEventListener('click', salvarMeta);
-  if (modalMeta) modalMeta.addEventListener('click', fecharModalAoClicarFora);
-
-  // Modal: confirmação exclusão
-  var closeConf  = document.getElementById('close-confirm');
-  var cancelConf = document.getElementById('btn-cancel-confirm');
-  var okConf     = document.getElementById('btn-ok-confirm');
-  var modalConf  = document.getElementById('modal-confirm');
-  if (closeConf)  closeConf.addEventListener('click',  function() { modalConf && modalConf.classList.remove('open'); });
-  if (cancelConf) cancelConf.addEventListener('click', function() { modalConf && modalConf.classList.remove('open'); });
+  // Modal confirmação
+  const closeConf  = document.getElementById('close-confirm');
+  const cancelConf = document.getElementById('btn-cancel-confirm');
+  const okConf     = document.getElementById('btn-ok-confirm');
+  if (closeConf)  closeConf.addEventListener('click',  function(){ document.getElementById('modal-confirm').classList.remove('open'); });
+  if (cancelConf) cancelConf.addEventListener('click', function(){ document.getElementById('modal-confirm').classList.remove('open'); });
   if (okConf)     okConf.addEventListener('click', confirmarExclusao);
-  if (modalConf)  modalConf.addEventListener('click', fecharModalAoClicarFora);
+  bindOverlay('modal-confirm');
 
   // Ver todos
-  var btnVerTodos = document.getElementById('btn-ver-todos');
-  if (btnVerTodos) btnVerTodos.addEventListener('click', function() { navegar('lancamentos'); });
+  const btnVT = document.getElementById('btn-ver-todos');
+  if (btnVT) btnVT.addEventListener('click', function(){ navegar('lancamentos'); });
 
-  // Filtros de tipo
-  var filterTabs = document.getElementById('filter-tabs');
-  if (filterTabs) {
-    filterTabs.addEventListener('click', function(e) {
-      var btn = e.target.closest('.filter-tab');
-      if (!btn) return;
-      document.querySelectorAll('.filter-tab').forEach(function(b) { b.classList.remove('active'); });
+  // Filtros
+  document.querySelectorAll('.ftab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.ftab').forEach(function(b){ b.classList.remove('active'); });
       btn.classList.add('active');
-      estado.filtroLancamentos = btn.dataset.filter;
-      renderizarLancamentosFull();
+      estado.filtro = btn.dataset.filter;
+      renderLancsFull();
     });
-  }
+  });
 
   // Cartão
-  var btnSalvarCartao = document.getElementById('btn-salvar-cartao');
-  var btnAddFatura    = document.getElementById('btn-add-fatura');
-  if (btnSalvarCartao) btnSalvarCartao.addEventListener('click', salvarCartao);
-  if (btnAddFatura) {
-    btnAddFatura.addEventListener('click', function() {
-      abrirModalLancamento('saida');
-      setTimeout(function() {
-        var el = document.getElementById('input-cartao');
-        if (el) el.checked = true;
-      }, 350);
-    });
-  }
+  const btnSalvCart = document.getElementById('btn-salvar-cartao');
+  const btnAddFat   = document.getElementById('btn-add-fatura');
+  if (btnSalvCart) btnSalvCart.addEventListener('click', salvarCartao);
+  if (btnAddFat)   btnAddFat.addEventListener('click', function(){
+    abrirModalLanc('saida');
+    setTimeout(function(){
+      const el = document.getElementById('input-cartao');
+      if (el) el.checked = true;
+    }, 350);
+  });
 
   // Perfil
-  var btnSalvarPerfil = document.getElementById('btn-salvar-perfil');
-  var btnExportar     = document.getElementById('btn-exportar');
-  var btnLimpar       = document.getElementById('btn-limpar');
-  if (btnSalvarPerfil) btnSalvarPerfil.addEventListener('click', salvarPerfil);
-  if (btnExportar)     btnExportar.addEventListener('click', exportarDados);
-  if (btnLimpar)       btnLimpar.addEventListener('click', limparDados);
+  const btnSP = document.getElementById('btn-salvar-perfil');
+  const btnEx = document.getElementById('btn-exportar');
+  const btnLi = document.getElementById('btn-limpar');
+  if (btnSP) btnSP.addEventListener('click', salvarPerfil);
+  if (btnEx) btnEx.addEventListener('click', exportar);
+  if (btnLi) btnLi.addEventListener('click', limpar);
 
-  // Carrega dados
   carregarPerfil();
-  renderizarTudo();
+  renderAll();
 
-  // Registra service worker
+  // Service Worker
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').catch(function(err) {
-        console.warn('SW não registrado:', err);
-      });
-    });
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
   }
 }
 
-// Inicia quando o DOM estiver pronto
-if (document.readyState === 'loading') {
+if (document.readyState==='loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();

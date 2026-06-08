@@ -3,213 +3,169 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0f" />
-  <meta name="description" content="Controle seus gastos de forma simples e rápida" />
+  <meta name="theme-color" content="#0d0d0d" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Grana" />
-
-  <title>Grana — Controle Financeiro</title>
-
+  <title>Grana</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- Fontes: Syne (display) + DM Sans (corpo) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ===== SPLASH SCREEN ===== -->
+  <!-- SPLASH -->
   <div id="splash">
-    <div class="splash-logo">
-      <span class="splash-icon">₢</span>
+    <div class="splash-inner">
+      <div class="splash-logo">G</div>
       <span class="splash-name">grana</span>
     </div>
-    <p class="splash-sub">seu dinheiro, seu controle</p>
   </div>
 
-  <!-- ===== APP WRAPPER ===== -->
-  <div id="app" class="hidden">
+  <!-- APP -->
+  <div id="app">
 
-    <!-- HEADER -->
-    <header class="app-header">
-      <div class="header-left">
-        <span class="logo-mark">₢</span>
-        <span class="logo-text">grana</span>
-      </div>
-      <div class="header-right">
-        <button class="btn-icon" id="btn-notif" aria-label="Notificações">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </button>
-        <div class="avatar" id="avatar-btn">G</div>
-      </div>
-    </header>
+    <!-- ===== PÁGINA: HOME ===== -->
+    <div class="page active" id="page-home">
 
-    <!-- MÊS SELECTOR -->
-    <div class="month-nav">
-      <button class="month-arrow" id="prev-month" aria-label="Mês anterior">‹</button>
-      <span class="month-label" id="month-label">Junho 2025</span>
-      <button class="month-arrow" id="next-month" aria-label="Próximo mês">›</button>
-    </div>
-
-    <!-- PÁGINAS -->
-    <main class="pages-container" id="pages-container">
-
-      <!-- ===== PÁGINA: VISÃO GERAL ===== -->
-      <section class="page active" id="page-home">
-
-        <!-- Cards de resumo -->
-        <div class="summary-cards">
-          <div class="card card-balance">
-            <span class="card-label">Saldo do mês</span>
-            <span class="card-value" id="saldo-mes">R$ 0,00</span>
-            <div class="card-trend" id="trend-saldo"></div>
+      <header class="header">
+        <div class="header-top">
+          <div>
+            <p class="header-greeting" id="greeting">Olá! 👋</p>
+            <p class="header-sub" id="header-month">Junho 2026</p>
           </div>
-          <div class="cards-row">
-            <div class="card card-income">
-              <span class="card-label">Entradas</span>
-              <span class="card-value" id="total-entradas">R$ 0,00</span>
-            </div>
-            <div class="card card-expense">
-              <span class="card-label">Saídas</span>
-              <span class="card-value" id="total-saidas">R$ 0,00</span>
-            </div>
+          <div class="header-actions">
+            <button class="month-btn" id="prev-month">‹</button>
+            <button class="month-btn" id="next-month">›</button>
+            <div class="avatar" id="avatar-btn">G</div>
           </div>
         </div>
 
-        <!-- Meta de economia -->
-        <div class="section-block">
-          <div class="section-header">
-            <h2 class="section-title">Meta de economia</h2>
-            <button class="btn-text" id="btn-edit-meta">editar</button>
-          </div>
-          <div class="meta-card">
-            <div class="meta-info">
-              <span class="meta-saved" id="meta-saved">R$ 0,00</span>
-              <span class="meta-target" id="meta-target">de R$ 0,00</span>
+        <!-- Saldo geral -->
+        <div class="balance-card">
+          <span class="balance-label">Saldo do mês</span>
+          <span class="balance-value" id="saldo-mes">R$ 0,00</span>
+          <div class="balance-row">
+            <div class="balance-item">
+              <span class="bi-label">↓ Entradas</span>
+              <span class="bi-value entrada" id="total-entradas">R$ 0,00</span>
             </div>
-            <div class="progress-bar">
-              <div class="progress-fill" id="progress-fill" style="width:0%"></div>
-            </div>
-            <div class="meta-footer">
-              <span class="meta-pct" id="meta-pct">0%</span>
-              <span class="meta-msg" id="meta-msg">Defina uma meta!</span>
+            <div class="balance-divider"></div>
+            <div class="balance-item">
+              <span class="bi-label">↑ Saídas</span>
+              <span class="bi-value saida" id="total-saidas">R$ 0,00</span>
             </div>
           </div>
         </div>
+      </header>
 
-        <!-- Gastos por categoria -->
-        <div class="section-block">
-          <div class="section-header">
-            <h2 class="section-title">Por categoria</h2>
-          </div>
-          <div class="categoria-list" id="categoria-list">
-            <div class="empty-state-small">Nenhum gasto ainda</div>
-          </div>
+      <div class="content">
+        <!-- Categorias -->
+        <div class="section-header">
+          <span class="section-title">Categorias</span>
+          <button class="btn-add-cat" id="btn-nova-categoria">+ nova</button>
+        </div>
+        <div class="cat-grid" id="cat-grid">
+          <!-- gerado pelo JS -->
         </div>
 
         <!-- Últimos lançamentos -->
-        <div class="section-block">
-          <div class="section-header">
-            <h2 class="section-title">Últimos lançamentos</h2>
-            <button class="btn-text" id="btn-ver-todos">ver todos</button>
-          </div>
-          <div class="lancamentos-list" id="lancamentos-recentes">
-            <div class="empty-state">
-              <span class="empty-icon">💸</span>
-              <p>Nenhum lançamento ainda.<br/>Toque no <strong>+</strong> para começar!</p>
-            </div>
-          </div>
+        <div class="section-header" style="margin-top:24px">
+          <span class="section-title">Últimos lançamentos</span>
+          <button class="btn-text-sm" id="btn-ver-todos">ver todos</button>
         </div>
+        <div class="lancamentos-list" id="lancamentos-recentes"></div>
+      </div>
 
-      </section>
+    </div>
 
-      <!-- ===== PÁGINA: LANÇAMENTOS ===== -->
-      <section class="page" id="page-lancamentos">
-        <div class="page-toolbar">
-          <div class="filter-tabs" id="filter-tabs">
-            <button class="filter-tab active" data-filter="todos">Todos</button>
-            <button class="filter-tab" data-filter="entrada">Entradas</button>
-            <button class="filter-tab" data-filter="saida">Saídas</button>
-          </div>
-          <button class="btn-icon" id="btn-filter-cat" aria-label="Filtrar categoria">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          </button>
+    <!-- ===== PÁGINA: LANÇAMENTOS ===== -->
+    <div class="page" id="page-lancamentos">
+      <header class="header header-simple">
+        <h1 class="page-title">Lançamentos</h1>
+        <div class="filter-row">
+          <button class="ftab active" data-filter="todos">Todos</button>
+          <button class="ftab" data-filter="entrada">Entradas</button>
+          <button class="ftab" data-filter="saida">Saídas</button>
         </div>
-        <div class="lancamentos-list" id="lancamentos-full">
-          <div class="empty-state">
-            <span class="empty-icon">📋</span>
-            <p>Nenhum lançamento neste mês.</p>
-          </div>
-        </div>
-      </section>
+      </header>
+      <div class="content">
+        <div class="lancamentos-list" id="lancamentos-full"></div>
+      </div>
+    </div>
 
-      <!-- ===== PÁGINA: CARTÃO ===== -->
-      <section class="page" id="page-cartao">
-        <div class="credit-card-visual" id="credit-card-visual">
+    <!-- ===== PÁGINA: CARTÃO ===== -->
+    <div class="page" id="page-cartao">
+      <header class="header header-simple">
+        <h1 class="page-title">Cartão de Crédito</h1>
+      </header>
+      <div class="content">
+        <div class="credit-card">
           <div class="cc-chip"></div>
-          <div class="cc-bank">Cartão de Crédito</div>
-          <div class="cc-number">•••• •••• •••• ••••</div>
-          <div class="cc-footer">
+          <div class="cc-top">
+            <span class="cc-nome-display" id="cc-nome-display">Meu Cartão</span>
+          </div>
+          <div class="cc-bottom">
             <div>
-              <div class="cc-label">Fatura atual</div>
-              <div class="cc-fatura" id="cc-fatura">R$ 0,00</div>
+              <div class="cc-lbl">Fatura atual</div>
+              <div class="cc-val" id="cc-fatura-val">R$ 0,00</div>
             </div>
             <div>
-              <div class="cc-label">Limite</div>
-              <div class="cc-limite" id="cc-limite">—</div>
+              <div class="cc-lbl">Limite</div>
+              <div class="cc-val" id="cc-limite-val">—</div>
+            </div>
+            <div>
+              <div class="cc-lbl">Vence dia</div>
+              <div class="cc-val" id="cc-venc-val">—</div>
             </div>
           </div>
         </div>
 
-        <div class="section-block">
-          <div class="section-header">
-            <h2 class="section-title">Configurar cartão</h2>
-          </div>
+        <div class="form-card">
+          <p class="form-card-title">Configurar cartão</p>
           <div class="form-group">
             <label class="form-label">Nome do cartão</label>
             <input type="text" class="form-input" id="cc-nome" placeholder="Ex: Nubank, Inter..." />
           </div>
-          <div class="form-group">
-            <label class="form-label">Limite (R$)</label>
-            <input type="number" class="form-input" id="cc-limite-input" placeholder="0,00" inputmode="decimal" />
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Limite (R$)</label>
+              <input type="number" class="form-input" id="cc-limite-input" placeholder="0,00" inputmode="decimal" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vencimento</label>
+              <input type="number" class="form-input" id="cc-vencimento" placeholder="dia" min="1" max="31" />
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Dia do vencimento</label>
-            <input type="number" class="form-input" id="cc-vencimento" placeholder="Ex: 10" min="1" max="31" />
-          </div>
-          <button class="btn-primary" id="btn-salvar-cartao">Salvar cartão</button>
+          <button class="btn-primary" id="btn-salvar-cartao">Salvar</button>
         </div>
 
-        <div class="section-block">
-          <div class="section-header">
-            <h2 class="section-title">Gastos no cartão</h2>
-            <button class="btn-text" id="btn-add-fatura">+ lançar</button>
-          </div>
-          <div class="lancamentos-list" id="lancamentos-cartao">
-            <div class="empty-state-small">Nenhum gasto no cartão este mês</div>
-          </div>
+        <div class="section-header" style="margin-top:8px">
+          <span class="section-title">Gastos no cartão</span>
+          <button class="btn-text-sm" id="btn-add-fatura">+ lançar</button>
         </div>
-      </section>
+        <div class="lancamentos-list" id="lancamentos-cartao"></div>
+      </div>
+    </div>
 
-      <!-- ===== PÁGINA: PERFIL ===== -->
-      <section class="page" id="page-perfil">
-        <div class="perfil-header">
-          <div class="perfil-avatar">G</div>
-          <div class="perfil-info">
-            <div class="perfil-nome" id="perfil-nome-display">Usuário</div>
-            <div class="perfil-sub">Conta pessoal</div>
-          </div>
+    <!-- ===== PÁGINA: PERFIL ===== -->
+    <div class="page" id="page-perfil">
+      <header class="header header-simple">
+        <h1 class="page-title">Perfil</h1>
+      </header>
+      <div class="content">
+        <div class="perfil-hero">
+          <div class="perfil-avatar" id="perfil-avatar-big">G</div>
+          <div class="perfil-nome-big" id="perfil-nome-big">Usuário</div>
+          <div class="perfil-sub">Conta pessoal</div>
         </div>
 
-        <div class="section-block">
-          <h2 class="section-title">Personalizar</h2>
+        <div class="form-card">
+          <p class="form-card-title">Seus dados</p>
           <div class="form-group">
-            <label class="form-label">Seu nome</label>
+            <label class="form-label">Nome</label>
             <input type="text" class="form-input" id="input-nome" placeholder="Como quer ser chamado?" />
           </div>
           <div class="form-group">
@@ -219,121 +175,122 @@
           <button class="btn-primary" id="btn-salvar-perfil">Salvar</button>
         </div>
 
-        <div class="section-block">
-          <h2 class="section-title">Dados</h2>
-          <button class="btn-secondary" id="btn-exportar">📤 Exportar dados (JSON)</button>
-          <button class="btn-danger" id="btn-limpar">🗑️ Limpar todos os dados</button>
+        <div class="form-card">
+          <p class="form-card-title">Dados & Backup</p>
+          <button class="btn-secondary" id="btn-exportar">📤 Exportar JSON</button>
+          <button class="btn-danger" id="btn-limpar">🗑️ Apagar todos os dados</button>
         </div>
 
-        <div class="app-version">Grana v1.0 • Feito com 💚 para o Brasil</div>
-      </section>
-
-    </main>
+        <p class="app-version">Grana v2.0 · Feito para o Brasil 🇧🇷</p>
+      </div>
+    </div>
 
     <!-- FAB -->
-    <button class="fab" id="fab" aria-label="Adicionar lançamento">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <button class="fab" id="fab" aria-label="Novo lançamento">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
 
     <!-- BOTTOM NAV -->
     <nav class="bottom-nav">
-      <button class="nav-item active" data-page="home">
+      <button class="nav-btn active" data-page="home">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span>Início</span>
       </button>
-      <button class="nav-item" data-page="lancamentos">
+      <button class="nav-btn" data-page="lancamentos">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         <span>Lançamentos</span>
       </button>
-      <div class="nav-spacer"></div>
-      <button class="nav-item" data-page="cartao">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <div style="width:64px"></div>
+      <button class="nav-btn" data-page="cartao">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         <span>Cartão</span>
       </button>
-      <button class="nav-item" data-page="perfil">
+      <button class="nav-btn" data-page="perfil">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span>Perfil</span>
       </button>
     </nav>
 
-  </div>
+  </div><!-- /app -->
 
   <!-- ===== MODAIS ===== -->
 
   <!-- Modal: Novo Lançamento -->
   <div class="modal-overlay" id="modal-lancamento">
-    <div class="modal" id="modal-lancamento-box">
+    <div class="modal-box">
+      <div class="modal-handle"></div>
       <div class="modal-header">
-        <h3 class="modal-title" id="modal-lancamento-title">Novo lançamento</h3>
+        <h3 class="modal-title">Novo lançamento</h3>
         <button class="modal-close" id="close-lancamento">✕</button>
       </div>
-
-      <!-- Toggle tipo -->
       <div class="tipo-toggle">
-        <button class="tipo-btn active" data-tipo="saida" id="btn-tipo-saida">
-          <span>↑</span> Saída
-        </button>
-        <button class="tipo-btn" data-tipo="entrada" id="btn-tipo-entrada">
-          <span>↓</span> Entrada
-        </button>
+        <button class="tipo-btn active" data-tipo="saida">↑ Saída</button>
+        <button class="tipo-btn" data-tipo="entrada">↓ Entrada</button>
       </div>
-
-      <!-- Valor grande -->
-      <div class="valor-display">
-        <span class="valor-currency">R$</span>
+      <div class="valor-block">
+        <span class="valor-rs">R$</span>
         <input type="number" class="valor-input" id="input-valor" placeholder="0,00" inputmode="decimal" step="0.01" />
       </div>
-
       <div class="form-group">
         <label class="form-label">Descrição</label>
-        <input type="text" class="form-input" id="input-descricao" placeholder="Ex: Almoço no trabalho" />
+        <input type="text" class="form-input" id="input-descricao" placeholder="Ex: Almoço, Uber..." />
       </div>
-
       <div class="form-group">
         <label class="form-label">Categoria</label>
-        <div class="categoria-chips" id="categoria-chips">
-          <!-- gerado pelo JS -->
-        </div>
+        <div class="cat-chips" id="cat-chips"></div>
       </div>
-
       <div class="form-group">
         <label class="form-label">Data</label>
         <input type="date" class="form-input" id="input-data" />
       </div>
-
-      <div class="form-group">
-        <label class="form-label">
-          <input type="checkbox" id="input-cartao" /> Lançar no cartão de crédito
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="input-cartao" />
+          <span>Lançar no cartão de crédito</span>
         </label>
       </div>
-
-      <button class="btn-primary btn-full" id="btn-salvar-lancamento">Salvar lançamento</button>
+      <button class="btn-primary btn-full" id="btn-salvar-lancamento">Salvar</button>
     </div>
   </div>
 
-  <!-- Modal: Meta -->
-  <div class="modal-overlay" id="modal-meta">
-    <div class="modal">
+  <!-- Modal: Nova Categoria -->
+  <div class="modal-overlay" id="modal-categoria">
+    <div class="modal-box">
+      <div class="modal-handle"></div>
       <div class="modal-header">
-        <h3 class="modal-title">Meta de economia</h3>
-        <button class="modal-close" id="close-meta">✕</button>
+        <h3 class="modal-title" id="modal-cat-title">Nova categoria</h3>
+        <button class="modal-close" id="close-categoria">✕</button>
       </div>
       <div class="form-group">
-        <label class="form-label">Valor da meta (R$)</label>
-        <input type="number" class="form-input" id="input-meta" placeholder="Ex: 500,00" inputmode="decimal" />
+        <label class="form-label">Nome</label>
+        <input type="text" class="form-input" id="cat-nome-input" placeholder="Ex: Academia, Pet..." />
       </div>
-      <button class="btn-primary btn-full" id="btn-salvar-meta">Definir meta</button>
+      <div class="form-group">
+        <label class="form-label">Ícone</label>
+        <div class="emoji-grid" id="emoji-grid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cor</label>
+        <div class="color-grid" id="color-grid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Limite mensal (R$) — opcional</label>
+        <input type="number" class="form-input" id="cat-limite-input" placeholder="Ex: 500,00" inputmode="decimal" />
+      </div>
+      <button class="btn-primary btn-full" id="btn-salvar-categoria">Salvar categoria</button>
+      <button class="btn-danger btn-full" id="btn-excluir-categoria" style="display:none;margin-top:10px">Excluir categoria</button>
     </div>
   </div>
 
-  <!-- Modal: Confirmar exclusão -->
+  <!-- Modal: Confirmação -->
   <div class="modal-overlay" id="modal-confirm">
-    <div class="modal modal-small">
+    <div class="modal-box modal-box-sm">
+      <div class="modal-handle"></div>
       <div class="modal-header">
-        <h3 class="modal-title">Excluir lançamento?</h3>
+        <h3 class="modal-title">Confirmar exclusão</h3>
         <button class="modal-close" id="close-confirm">✕</button>
       </div>
-      <p class="modal-text" id="confirm-text">Esta ação não pode ser desfeita.</p>
+      <p class="modal-text" id="confirm-text">Deseja excluir este item?</p>
       <div class="modal-actions">
         <button class="btn-secondary" id="btn-cancel-confirm">Cancelar</button>
         <button class="btn-danger" id="btn-ok-confirm">Excluir</button>
@@ -347,3 +304,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+EOF

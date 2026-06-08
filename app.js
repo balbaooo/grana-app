@@ -33,12 +33,12 @@ const MESES = [
 // ============================================
 
 let estado = {
-  mesAtual: new Date().getMonth(),     // 0-11
+  mesAtual: new Date().getMonth(),
   anoAtual: new Date().getFullYear(),
   paginaAtual: 'home',
-  edicaoId: null,                      // ID do lançamento em edição
-  excluirId: null,                     // ID aguardando confirmação de exclusão
-  tipoLancamento: 'saida',             // 'entrada' ou 'saida'
+  edicaoId: null,
+  excluirId: null,
+  tipoLancamento: 'saida',
   categoriaSelecionada: 'outros',
   filtroLancamentos: 'todos',
 };
@@ -58,42 +58,38 @@ const KEYS = {
 // HELPERS DE LOCALSTORAGE
 // ============================================
 
-/** Retorna os lançamentos salvos */
 function getLancamentos() {
-  return JSON.parse(localStorage.getItem(KEYS.lancamentos) || '[]');
+  try { return JSON.parse(localStorage.getItem(KEYS.lancamentos) || '[]'); }
+  catch(e) { return []; }
 }
 
-/** Salva o array de lançamentos */
 function setLancamentos(arr) {
   localStorage.setItem(KEYS.lancamentos, JSON.stringify(arr));
 }
 
-/** Retorna o perfil do usuário */
 function getPerfil() {
-  return JSON.parse(localStorage.getItem(KEYS.perfil) || '{"nome":"Usuário","renda":0}');
+  try { return JSON.parse(localStorage.getItem(KEYS.perfil) || '{"nome":"Usuário","renda":0}'); }
+  catch(e) { return {nome:'Usuário',renda:0}; }
 }
 
-/** Salva perfil */
 function setPerfil(p) {
   localStorage.setItem(KEYS.perfil, JSON.stringify(p));
 }
 
-/** Retorna metas por mês/ano (chave = "MM-YYYY") */
 function getMetas() {
-  return JSON.parse(localStorage.getItem(KEYS.metas) || '{}');
+  try { return JSON.parse(localStorage.getItem(KEYS.metas) || '{}'); }
+  catch(e) { return {}; }
 }
 
-/** Salva metas */
 function setMetas(m) {
   localStorage.setItem(KEYS.metas, JSON.stringify(m));
 }
 
-/** Retorna configuração do cartão */
 function getCartao() {
-  return JSON.parse(localStorage.getItem(KEYS.cartao) || '{"nome":"","limite":0,"vencimento":10}');
+  try { return JSON.parse(localStorage.getItem(KEYS.cartao) || '{"nome":"","limite":0,"vencimento":10}'); }
+  catch(e) { return {nome:'',limite:0,vencimento:10}; }
 }
 
-/** Salva configuração do cartão */
 function setCartao(c) {
   localStorage.setItem(KEYS.cartao, JSON.stringify(c));
 }
@@ -102,37 +98,34 @@ function setCartao(c) {
 // FORMATADORES
 // ============================================
 
-/** Formata número como moeda BRL */
 function formatBRL(valor) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-/** Formata data ISO para DD/MM/YYYY */
 function formatData(isoDate) {
   if (!isoDate) return '';
   const [y, m, d] = isoDate.split('-');
-  return `${d}/${m}/${y}`;
+  return d + '/' + m + '/' + y;
 }
 
-/** Retorna a data de hoje no formato YYYY-MM-DD */
 function hojeISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Retorna a chave de mês/ano atual */
 function chaveAtual() {
-  return `${estado.mesAtual + 1}-${estado.anoAtual}`;
+  return (estado.mesAtual + 1) + '-' + estado.anoAtual;
 }
 
 // ============================================
 // FILTRAGEM DE LANÇAMENTOS
 // ============================================
 
-/** Filtra lançamentos do mês/ano selecionado */
 function getLancamentosMes() {
   const todos = getLancamentos();
-  return todos.filter(l => {
-    const [y, m] = l.data.split('-').map(Number);
+  return todos.filter(function(l) {
+    const parts = l.data.split('-');
+    const y = parseInt(parts[0]);
+    const m = parseInt(parts[1]);
     return m === estado.mesAtual + 1 && y === estado.anoAtual;
   });
 }
@@ -149,13 +142,14 @@ function gerarId() {
 // ============================================
 let toastTimer = null;
 
-function showToast(msg, tipo = 'ok') {
+function showToast(msg, tipo) {
   const el = document.getElementById('toast');
+  if (!el) return;
   el.textContent = msg;
   el.style.borderColor = tipo === 'erro' ? 'var(--red)' : 'var(--border2)';
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2800);
 }
 
 // ============================================
@@ -163,18 +157,19 @@ function showToast(msg, tipo = 'ok') {
 // ============================================
 
 function navegar(pagina) {
-  // Remove active de todos
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
 
-  // Ativa a página e o item de nav
-  document.getElementById(`page-${pagina}`)?.classList.add('active');
-  document.querySelector(`.nav-item[data-page="${pagina}"]`)?.classList.add('active');
+  var pg = document.getElementById('page-' + pagina);
+  if (pg) pg.classList.add('active');
+
+  var ni = document.querySelector('.nav-item[data-page="' + pagina + '"]');
+  if (ni) ni.classList.add('active');
 
   estado.paginaAtual = pagina;
 
-  // Rola para o topo
-  document.getElementById('pages-container').scrollTop = 0;
+  var pc = document.getElementById('pages-container');
+  if (pc) pc.scrollTop = 0;
 }
 
 // ============================================
@@ -182,8 +177,8 @@ function navegar(pagina) {
 // ============================================
 
 function atualizarNavMes() {
-  document.getElementById('month-label').textContent =
-    `${MESES[estado.mesAtual]} ${estado.anoAtual}`;
+  var el = document.getElementById('month-label');
+  if (el) el.textContent = MESES[estado.mesAtual] + ' ' + estado.anoAtual;
 }
 
 function mesAnterior() {
@@ -218,21 +213,21 @@ function renderizarTudo() {
 // ============================================
 
 function renderizarResumo() {
-  const lancamentos = getLancamentosMes();
-  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
-  const saidas   = lancamentos.filter(l => l.tipo === 'saida'  ).reduce((s, l) => s + l.valor, 0);
-  const saldo    = entradas - saidas;
+  var lancamentos = getLancamentosMes();
+  var entradas = 0, saidas = 0;
+  lancamentos.forEach(function(l) {
+    if (l.tipo === 'entrada') entradas += l.valor;
+    else saidas += l.valor;
+  });
+  var saldo = entradas - saidas;
 
-  const elSaldo   = document.getElementById('saldo-mes');
-  const elEntrada = document.getElementById('total-entradas');
-  const elSaida   = document.getElementById('total-saidas');
+  var elSaldo   = document.getElementById('saldo-mes');
+  var elEntrada = document.getElementById('total-entradas');
+  var elSaida   = document.getElementById('total-saidas');
 
-  elSaldo.textContent   = formatBRL(saldo);
-  elEntrada.textContent = formatBRL(entradas);
-  elSaida.textContent   = formatBRL(saidas);
-
-  // Cor do saldo
-  elSaldo.classList.toggle('negativo', saldo < 0);
+  if (elSaldo)   { elSaldo.textContent   = formatBRL(saldo);    elSaldo.classList.toggle('negativo', saldo < 0); }
+  if (elEntrada)   elEntrada.textContent = formatBRL(entradas);
+  if (elSaida)     elSaida.textContent   = formatBRL(saidas);
 }
 
 // ============================================
@@ -240,30 +235,37 @@ function renderizarResumo() {
 // ============================================
 
 function renderizarMeta() {
-  const metas = getMetas();
-  const chave = chaveAtual();
-  const meta  = metas[chave] || 0;
+  var metas = getMetas();
+  var meta  = metas[chaveAtual()] || 0;
 
-  const lancamentos = getLancamentosMes();
-  const entradas    = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
-  const saidas      = lancamentos.filter(l => l.tipo === 'saida'  ).reduce((s, l) => s + l.valor, 0);
-  const economizado = Math.max(0, entradas - saidas);
+  var lancamentos = getLancamentosMes();
+  var entradas = 0, saidas = 0;
+  lancamentos.forEach(function(l) {
+    if (l.tipo === 'entrada') entradas += l.valor;
+    else saidas += l.valor;
+  });
+  var economizado = Math.max(0, entradas - saidas);
+  var pct = meta > 0 ? Math.min(100, (economizado / meta) * 100) : 0;
 
-  const pct = meta > 0 ? Math.min(100, (economizado / meta) * 100) : 0;
+  var elSaved  = document.getElementById('meta-saved');
+  var elTarget = document.getElementById('meta-target');
+  var elFill   = document.getElementById('progress-fill');
+  var elPct    = document.getElementById('meta-pct');
+  var elMsg    = document.getElementById('meta-msg');
 
-  document.getElementById('meta-saved').textContent  = formatBRL(economizado);
-  document.getElementById('meta-target').textContent = `de ${formatBRL(meta)}`;
-  document.getElementById('progress-fill').style.width = `${pct}%`;
-  document.getElementById('meta-pct').textContent   = `${Math.round(pct)}%`;
+  if (elSaved)  elSaved.textContent  = formatBRL(economizado);
+  if (elTarget) elTarget.textContent = 'de ' + formatBRL(meta);
+  if (elFill)   elFill.style.width   = pct + '%';
+  if (elPct)    elPct.textContent    = Math.round(pct) + '%';
 
-  let msg = 'Defina uma meta!';
+  var msg = 'Defina uma meta!';
   if (meta > 0) {
     if (pct >= 100) msg = '🎉 Meta atingida!';
     else if (pct >= 70) msg = 'Quase lá, continue!';
     else if (pct >= 30) msg = 'Bom progresso!';
     else msg = 'Você consegue!';
   }
-  document.getElementById('meta-msg').textContent = msg;
+  if (elMsg) elMsg.textContent = msg;
 }
 
 // ============================================
@@ -271,44 +273,38 @@ function renderizarMeta() {
 // ============================================
 
 function renderizarCategorias() {
-  const lancamentos = getLancamentosMes().filter(l => l.tipo === 'saida');
-  const container   = document.getElementById('categoria-list');
+  var lancamentos = getLancamentosMes().filter(function(l) { return l.tipo === 'saida'; });
+  var container   = document.getElementById('categoria-list');
+  if (!container) return;
 
   if (!lancamentos.length) {
     container.innerHTML = '<div class="empty-state-small">Nenhum gasto ainda</div>';
     return;
   }
 
-  // Agrupa por categoria
-  const grupos = {};
-  lancamentos.forEach(l => {
+  var grupos = {};
+  lancamentos.forEach(function(l) {
     if (!grupos[l.categoria]) grupos[l.categoria] = { total: 0, count: 0 };
     grupos[l.categoria].total += l.valor;
     grupos[l.categoria].count++;
   });
 
-  const totalGeral = Object.values(grupos).reduce((s, g) => s + g.total, 0);
+  var totalGeral = 0;
+  Object.keys(grupos).forEach(function(k) { totalGeral += grupos[k].total; });
 
-  // Ordena por total decrescente
-  const ordenado = Object.entries(grupos).sort(([,a],[,b]) => b.total - a.total);
+  var ordenado = Object.keys(grupos).sort(function(a,b) { return grupos[b].total - grupos[a].total; });
 
-  container.innerHTML = ordenado.map(([catId, dados]) => {
-    const cat = CATEGORIAS.find(c => c.id === catId) || CATEGORIAS[CATEGORIAS.length - 1];
-    const pct = Math.round((dados.total / totalGeral) * 100);
-    return `
-      <div class="categoria-item">
-        <div class="cat-icon" style="background:${cat.cor}20">${cat.emoji}</div>
-        <div class="cat-info">
-          <span class="cat-name">${cat.nome}</span>
-          <span class="cat-count">${dados.count} lançamento${dados.count > 1 ? 's' : ''}</span>
-        </div>
-        <div class="cat-bar-wrap">
-          <div class="cat-bar">
-            <div class="cat-bar-fill" style="width:${pct}%;background:${cat.cor}"></div>
-          </div>
-          <span class="cat-value">${formatBRL(dados.total)}</span>
-        </div>
-      </div>`;
+  container.innerHTML = ordenado.map(function(catId) {
+    var dados = grupos[catId];
+    var cat = CATEGORIAS.find(function(c) { return c.id === catId; }) || CATEGORIAS[CATEGORIAS.length - 1];
+    var pct = Math.round((dados.total / totalGeral) * 100);
+    return '<div class="categoria-item">' +
+      '<div class="cat-icon" style="background:' + cat.cor + '20">' + cat.emoji + '</div>' +
+      '<div class="cat-info"><span class="cat-name">' + cat.nome + '</span>' +
+      '<span class="cat-count">' + dados.count + ' lançamento' + (dados.count > 1 ? 's' : '') + '</span></div>' +
+      '<div class="cat-bar-wrap"><div class="cat-bar">' +
+      '<div class="cat-bar-fill" style="width:' + pct + '%;background:' + cat.cor + '"></div></div>' +
+      '<span class="cat-value">' + formatBRL(dados.total) + '</span></div></div>';
   }).join('');
 }
 
@@ -316,75 +312,59 @@ function renderizarCategorias() {
 // LANÇAMENTOS: RENDERIZAÇÃO
 // ============================================
 
-/** Cria o HTML de um item de lançamento */
 function htmlLancamento(l) {
-  const cat    = CATEGORIAS.find(c => c.id === l.categoria) || CATEGORIAS[CATEGORIAS.length - 1];
-  const sinal  = l.tipo === 'entrada' ? '+' : '−';
-  const classe = l.tipo === 'entrada' ? 'entrada' : 'saida';
-  const tagCartao = l.cartao ? `<span class="item-tag" style="background:var(--blue-dim);color:var(--blue)">💳 cartão</span>` : '';
+  var cat    = CATEGORIAS.find(function(c) { return c.id === l.categoria; }) || CATEGORIAS[CATEGORIAS.length - 1];
+  var sinal  = l.tipo === 'entrada' ? '+' : '−';
+  var classe = l.tipo === 'entrada' ? 'entrada' : 'saida';
+  var tagCartao = l.cartao ? '<span class="item-tag" style="background:var(--blue-dim);color:var(--blue)">💳 cartão</span>' : '';
 
-  return `
-    <div class="lancamento-item" data-id="${l.id}">
-      <div class="item-icon" style="background:${cat.cor}20">${cat.emoji}</div>
-      <div class="item-info">
-        <span class="item-desc">${l.descricao || cat.nome}</span>
-        <div class="item-meta">
-          <span>${formatData(l.data)}</span>
-          <span>•</span>
-          <span>${cat.nome}</span>
-          ${tagCartao}
-        </div>
-      </div>
-      <span class="item-valor ${classe}">${sinal} ${formatBRL(l.valor)}</span>
-      <button class="item-delete" data-id="${l.id}" aria-label="Excluir">🗑</button>
-    </div>`;
+  return '<div class="lancamento-item" data-id="' + l.id + '">' +
+    '<div class="item-icon" style="background:' + cat.cor + '20">' + cat.emoji + '</div>' +
+    '<div class="item-info">' +
+    '<span class="item-desc">' + (l.descricao || cat.nome) + '</span>' +
+    '<div class="item-meta"><span>' + formatData(l.data) + '</span><span>•</span><span>' + cat.nome + '</span>' + tagCartao + '</div>' +
+    '</div>' +
+    '<span class="item-valor ' + classe + '">' + sinal + ' ' + formatBRL(l.valor) + '</span>' +
+    '<button class="item-delete" data-id="' + l.id + '" aria-label="Excluir">🗑</button>' +
+    '</div>';
 }
 
-/** Renderiza os últimos 5 lançamentos na home */
 function renderizarLancamentosRecentes() {
-  const lancamentos = getLancamentosMes()
-    .sort((a, b) => b.data.localeCompare(a.data))
+  var lancamentos = getLancamentosMes()
+    .sort(function(a, b) { return b.data.localeCompare(a.data); })
     .slice(0, 5);
-  const container = document.getElementById('lancamentos-recentes');
+  var container = document.getElementById('lancamentos-recentes');
+  if (!container) return;
 
   if (!lancamentos.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-icon">💸</span>
-        <p>Nenhum lançamento ainda.<br/>Toque no <strong>+</strong> para começar!</p>
-      </div>`;
+    container.innerHTML = '<div class="empty-state"><span class="empty-icon">💸</span><p>Nenhum lançamento ainda.<br/>Toque no <strong>+</strong> para começar!</p></div>';
     return;
   }
   container.innerHTML = lancamentos.map(htmlLancamento).join('');
   bindDeleteButtons(container);
 }
 
-/** Renderiza todos os lançamentos com filtro */
 function renderizarLancamentosFull() {
-  let lancamentos = getLancamentosMes().sort((a, b) => b.data.localeCompare(a.data));
+  var lancamentos = getLancamentosMes().sort(function(a, b) { return b.data.localeCompare(a.data); });
 
-  // Aplica filtro de tipo
   if (estado.filtroLancamentos !== 'todos') {
-    lancamentos = lancamentos.filter(l => l.tipo === estado.filtroLancamentos);
+    lancamentos = lancamentos.filter(function(l) { return l.tipo === estado.filtroLancamentos; });
   }
 
-  const container = document.getElementById('lancamentos-full');
+  var container = document.getElementById('lancamentos-full');
+  if (!container) return;
+
   if (!lancamentos.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-icon">📋</span>
-        <p>Nenhum lançamento neste período.</p>
-      </div>`;
+    container.innerHTML = '<div class="empty-state"><span class="empty-icon">📋</span><p>Nenhum lançamento neste período.</p></div>';
     return;
   }
   container.innerHTML = lancamentos.map(htmlLancamento).join('');
   bindDeleteButtons(container);
 }
 
-/** Liga os botões de deletar nos items */
 function bindDeleteButtons(container) {
-  container.querySelectorAll('.item-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  container.querySelectorAll('.item-delete').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
       e.stopPropagation();
       pedirConfirmacaoExclusao(btn.dataset.id);
     });
@@ -396,32 +376,34 @@ function bindDeleteButtons(container) {
 // ============================================
 
 function renderizarCartao() {
-  const cartao     = getCartao();
-  const lancamentos = getLancamentosMes().filter(l => l.tipo === 'saida' && l.cartao);
-  const totalFatura = lancamentos.reduce((s, l) => s + l.valor, 0);
+  var cartao     = getCartao();
+  var lancamentos = getLancamentosMes().filter(function(l) { return l.tipo === 'saida' && l.cartao; });
+  var totalFatura = 0;
+  lancamentos.forEach(function(l) { totalFatura += l.valor; });
 
-  // Visual do cartão
-  document.getElementById('cc-fatura').textContent = formatBRL(totalFatura);
-  document.getElementById('cc-limite').textContent = cartao.limite
-    ? formatBRL(cartao.limite)
-    : '—';
+  var elFatura = document.getElementById('cc-fatura');
+  var elLimite = document.getElementById('cc-limite');
+  if (elFatura) elFatura.textContent = formatBRL(totalFatura);
+  if (elLimite) elLimite.textContent = cartao.limite ? formatBRL(cartao.limite) : '—';
 
-  // Atualiza nome no visual
-  const ccBank = document.querySelector('.cc-bank');
+  var ccBank = document.querySelector('.cc-bank');
   if (ccBank && cartao.nome) ccBank.textContent = cartao.nome;
 
-  // Preenche inputs do formulário
-  document.getElementById('cc-nome').value      = cartao.nome || '';
-  document.getElementById('cc-limite-input').value  = cartao.limite || '';
-  document.getElementById('cc-vencimento').value = cartao.vencimento || '';
+  var elNome  = document.getElementById('cc-nome');
+  var elLimIn = document.getElementById('cc-limite-input');
+  var elVenc  = document.getElementById('cc-vencimento');
+  if (elNome)  elNome.value  = cartao.nome || '';
+  if (elLimIn) elLimIn.value = cartao.limite || '';
+  if (elVenc)  elVenc.value  = cartao.vencimento || '';
 
-  // Lista de gastos no cartão
-  const container = document.getElementById('lancamentos-cartao');
+  var container = document.getElementById('lancamentos-cartao');
+  if (!container) return;
+
   if (!lancamentos.length) {
     container.innerHTML = '<div class="empty-state-small">Nenhum gasto no cartão este mês</div>';
     return;
   }
-  container.innerHTML = lancamentos.sort((a,b) => b.data.localeCompare(a.data)).map(htmlLancamento).join('');
+  container.innerHTML = lancamentos.sort(function(a,b) { return b.data.localeCompare(a.data); }).map(htmlLancamento).join('');
   bindDeleteButtons(container);
 }
 
@@ -429,73 +411,76 @@ function renderizarCartao() {
 // MODAL: LANÇAMENTO
 // ============================================
 
-function abrirModalLancamento(tipo = 'saida') {
-  // Reseta formulário
-  document.getElementById('input-valor').value       = '';
-  document.getElementById('input-descricao').value   = '';
-  document.getElementById('input-data').value        = hojeISO();
-  document.getElementById('input-cartao').checked    = false;
+function abrirModalLancamento(tipo) {
+  tipo = tipo || 'saida';
+  var elValor = document.getElementById('input-valor');
+  var elDesc  = document.getElementById('input-descricao');
+  var elData  = document.getElementById('input-data');
+  var elCart  = document.getElementById('input-cartao');
+
+  if (elValor) elValor.value   = '';
+  if (elDesc)  elDesc.value    = '';
+  if (elData)  elData.value    = hojeISO();
+  if (elCart)  elCart.checked  = false;
   estado.edicaoId = null;
 
-  // Define tipo inicial
   setTipoLancamento(tipo);
-
-  // Seleciona categoria padrão
   selecionarCategoria('outros');
 
-  // Abre o modal
-  document.getElementById('modal-lancamento').classList.add('open');
+  var modal = document.getElementById('modal-lancamento');
+  if (modal) modal.classList.add('open');
 
-  // Foca no valor
-  setTimeout(() => document.getElementById('input-valor').focus(), 300);
+  setTimeout(function() { if (elValor) elValor.focus(); }, 300);
 }
 
 function fecharModalLancamento() {
-  document.getElementById('modal-lancamento').classList.remove('open');
+  var modal = document.getElementById('modal-lancamento');
+  if (modal) modal.classList.remove('open');
 }
 
-/** Define o tipo (entrada/saída) no modal */
 function setTipoLancamento(tipo) {
   estado.tipoLancamento = tipo;
-  document.querySelectorAll('.tipo-btn').forEach(btn => {
+  document.querySelectorAll('.tipo-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.tipo === tipo);
   });
 }
 
-/** Seleciona um chip de categoria */
 function selecionarCategoria(id) {
   estado.categoriaSelecionada = id;
-  document.querySelectorAll('.cat-chip').forEach(chip => {
+  document.querySelectorAll('.cat-chip').forEach(function(chip) {
     chip.classList.toggle('selected', chip.dataset.cat === id);
   });
 }
 
-/** Gera os chips de categoria no modal */
 function renderizarChipsCategorias() {
-  const container = document.getElementById('categoria-chips');
-  container.innerHTML = CATEGORIAS.map(cat => `
-    <button class="cat-chip" data-cat="${cat.id}" type="button">
-      <span>${cat.emoji}</span> ${cat.nome}
-    </button>`).join('');
+  var container = document.getElementById('categoria-chips');
+  if (!container) return;
 
-  container.querySelectorAll('.cat-chip').forEach(chip => {
-    chip.addEventListener('click', () => selecionarCategoria(chip.dataset.cat));
+  container.innerHTML = CATEGORIAS.map(function(cat) {
+    return '<button class="cat-chip" data-cat="' + cat.id + '" type="button"><span>' + cat.emoji + '</span> ' + cat.nome + '</button>';
+  }).join('');
+
+  container.querySelectorAll('.cat-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() { selecionarCategoria(chip.dataset.cat); });
   });
 
   selecionarCategoria('outros');
 }
 
-/** Salva o lançamento do modal */
 function salvarLancamento() {
-  const valor = parseFloat(document.getElementById('input-valor').value);
-  const descricao = document.getElementById('input-descricao').value.trim();
-  const data = document.getElementById('input-data').value;
-  const cartao = document.getElementById('input-cartao').checked;
+  var elValor = document.getElementById('input-valor');
+  var elDesc  = document.getElementById('input-descricao');
+  var elData  = document.getElementById('input-data');
+  var elCart  = document.getElementById('input-cartao');
 
-  // Validações
+  var valor   = parseFloat(elValor ? elValor.value : 0);
+  var descricao = elDesc ? elDesc.value.trim() : '';
+  var data    = elData ? elData.value : '';
+  var cartao  = elCart ? elCart.checked : false;
+
   if (!valor || valor <= 0) {
     showToast('Informe um valor válido', 'erro');
-    document.getElementById('input-valor').focus();
+    if (elValor) elValor.focus();
     return;
   }
   if (!data) {
@@ -503,26 +488,29 @@ function salvarLancamento() {
     return;
   }
 
-  const todos = getLancamentos();
+  var todos = getLancamentos();
 
   if (estado.edicaoId) {
-    // Atualiza lançamento existente
-    const idx = todos.findIndex(l => l.id === estado.edicaoId);
+    var idx = -1;
+    todos.forEach(function(l, i) { if (l.id === estado.edicaoId) idx = i; });
     if (idx !== -1) {
-      todos[idx] = { ...todos[idx], valor, descricao, data, cartao,
-        tipo: estado.tipoLancamento, categoria: estado.categoriaSelecionada };
+      todos[idx].valor     = valor;
+      todos[idx].descricao = descricao;
+      todos[idx].data      = data;
+      todos[idx].cartao    = cartao;
+      todos[idx].tipo      = estado.tipoLancamento;
+      todos[idx].categoria = estado.categoriaSelecionada;
     }
     showToast('Lançamento atualizado ✓');
   } else {
-    // Novo lançamento
     todos.push({
       id: gerarId(),
       tipo: estado.tipoLancamento,
-      valor,
-      descricao,
+      valor: valor,
+      descricao: descricao,
       categoria: estado.categoriaSelecionada,
-      data,
-      cartao,
+      data: data,
+      cartao: cartao,
       criadoEm: new Date().toISOString(),
     });
     showToast(estado.tipoLancamento === 'saida' ? 'Gasto registrado ✓' : 'Entrada registrada ✓');
@@ -532,7 +520,6 @@ function salvarLancamento() {
   fecharModalLancamento();
   renderizarTudo();
 
-  // Feedback háptico se disponível
   if (navigator.vibrate) navigator.vibrate(40);
 }
 
@@ -542,20 +529,24 @@ function salvarLancamento() {
 
 function pedirConfirmacaoExclusao(id) {
   estado.excluirId = id;
-  const l = getLancamentos().find(l => l.id === id);
+  var todos = getLancamentos();
+  var l = null;
+  todos.forEach(function(item) { if (item.id === id) l = item; });
   if (l) {
-    document.getElementById('confirm-text').textContent =
-      `Excluir "${l.descricao || l.categoria}" (${formatBRL(l.valor)})?`;
+    var el = document.getElementById('confirm-text');
+    if (el) el.textContent = 'Excluir "' + (l.descricao || l.categoria) + '" (' + formatBRL(l.valor) + ')?';
   }
-  document.getElementById('modal-confirm').classList.add('open');
+  var modal = document.getElementById('modal-confirm');
+  if (modal) modal.classList.add('open');
 }
 
 function confirmarExclusao() {
   if (!estado.excluirId) return;
-  const todos = getLancamentos().filter(l => l.id !== estado.excluirId);
+  var todos = getLancamentos().filter(function(l) { return l.id !== estado.excluirId; });
   setLancamentos(todos);
   estado.excluirId = null;
-  document.getElementById('modal-confirm').classList.remove('open');
+  var modal = document.getElementById('modal-confirm');
+  if (modal) modal.classList.remove('open');
   renderizarTudo();
   showToast('Lançamento excluído');
   if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
@@ -566,23 +557,27 @@ function confirmarExclusao() {
 // ============================================
 
 function abrirModalMeta() {
-  const metas = getMetas();
-  const meta  = metas[chaveAtual()] || '';
-  document.getElementById('input-meta').value = meta;
-  document.getElementById('modal-meta').classList.add('open');
-  setTimeout(() => document.getElementById('input-meta').focus(), 300);
+  var metas = getMetas();
+  var meta  = metas[chaveAtual()] || '';
+  var el = document.getElementById('input-meta');
+  if (el) el.value = meta;
+  var modal = document.getElementById('modal-meta');
+  if (modal) modal.classList.add('open');
+  setTimeout(function() { if (el) el.focus(); }, 300);
 }
 
 function salvarMeta() {
-  const valor = parseFloat(document.getElementById('input-meta').value);
+  var el = document.getElementById('input-meta');
+  var valor = parseFloat(el ? el.value : 0);
   if (!valor || valor <= 0) {
     showToast('Informe um valor válido', 'erro');
     return;
   }
-  const metas = getMetas();
+  var metas = getMetas();
   metas[chaveAtual()] = valor;
   setMetas(metas);
-  document.getElementById('modal-meta').classList.remove('open');
+  var modal = document.getElementById('modal-meta');
+  if (modal) modal.classList.remove('open');
   renderizarMeta();
   showToast('Meta definida ✓');
 }
@@ -592,10 +587,10 @@ function salvarMeta() {
 // ============================================
 
 function salvarCartao() {
-  const cartao = {
-    nome:       document.getElementById('cc-nome').value.trim(),
-    limite:     parseFloat(document.getElementById('cc-limite-input').value) || 0,
-    vencimento: parseInt(document.getElementById('cc-vencimento').value) || 10,
+  var cartao = {
+    nome:       (document.getElementById('cc-nome') || {}).value || '',
+    limite:     parseFloat((document.getElementById('cc-limite-input') || {}).value) || 0,
+    vencimento: parseInt((document.getElementById('cc-vencimento') || {}).value) || 10,
   };
   setCartao(cartao);
   renderizarCartao();
@@ -607,21 +602,27 @@ function salvarCartao() {
 // ============================================
 
 function carregarPerfil() {
-  const perfil = getPerfil();
-  document.getElementById('input-nome').value  = perfil.nome || '';
-  document.getElementById('input-renda').value = perfil.renda || '';
+  var perfil = getPerfil();
+  var elNome  = document.getElementById('input-nome');
+  var elRenda = document.getElementById('input-renda');
+  if (elNome)  elNome.value  = perfil.nome || '';
+  if (elRenda) elRenda.value = perfil.renda || '';
 
-  // Atualiza avatar e nome exibido
-  const inicial = (perfil.nome || 'U').charAt(0).toUpperCase();
-  document.getElementById('avatar').textContent         = inicial;
-  document.querySelector('.perfil-avatar').textContent  = inicial;
-  document.getElementById('perfil-nome-display').textContent = perfil.nome || 'Usuário';
+  var inicial = (perfil.nome || 'U').charAt(0).toUpperCase();
+  var elAvatar = document.getElementById('avatar');
+  var elPAvatar = document.querySelector('.perfil-avatar');
+  var elPNome   = document.getElementById('perfil-nome-display');
+  if (elAvatar)  elAvatar.textContent  = inicial;
+  if (elPAvatar) elPAvatar.textContent = inicial;
+  if (elPNome)   elPNome.textContent   = perfil.nome || 'Usuário';
 }
 
 function salvarPerfil() {
-  const nome  = document.getElementById('input-nome').value.trim();
-  const renda = parseFloat(document.getElementById('input-renda').value) || 0;
-  setPerfil({ nome: nome || 'Usuário', renda });
+  var elNome  = document.getElementById('input-nome');
+  var elRenda = document.getElementById('input-renda');
+  var nome  = elNome  ? elNome.value.trim()  : '';
+  var renda = elRenda ? parseFloat(elRenda.value) || 0 : 0;
+  setPerfil({ nome: nome || 'Usuário', renda: renda });
   carregarPerfil();
   showToast('Perfil salvo ✓');
 }
@@ -631,18 +632,18 @@ function salvarPerfil() {
 // ============================================
 
 function exportarDados() {
-  const dados = {
+  var dados = {
     lancamentos: getLancamentos(),
     perfil:      getPerfil(),
     metas:       getMetas(),
     cartao:      getCartao(),
     exportadoEm: new Date().toISOString(),
   };
-  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  var blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
   a.href     = url;
-  a.download = `grana-backup-${hojeISO()}.json`;
+  a.download = 'grana-backup-' + hojeISO() + '.json';
   a.click();
   URL.revokeObjectURL(url);
   showToast('Dados exportados ✓');
@@ -656,7 +657,7 @@ function limparDados() {
   if (!confirm('Tem certeza? Todos os dados serão apagados permanentemente.')) return;
   localStorage.clear();
   showToast('Dados apagados');
-  setTimeout(() => location.reload(), 800);
+  setTimeout(function() { location.reload(); }, 800);
 }
 
 // ============================================
@@ -674,94 +675,127 @@ function fecharModalAoClicarFora(e) {
 // ============================================
 
 function init() {
-  // Gera chips de categoria uma vez
+  // Esconde splash e mostra app imediatamente
+  var splash = document.getElementById('splash');
+  var app    = document.getElementById('app');
+
+  if (splash) {
+    setTimeout(function() {
+      splash.style.opacity = '0';
+      splash.style.transition = 'opacity 0.4s ease';
+      setTimeout(function() {
+        splash.style.display = 'none';
+      }, 400);
+    }, 1200);
+  }
+
+  if (app) {
+    app.classList.remove('hidden');
+  }
+
+  // Gera chips de categoria
   renderizarChipsCategorias();
 
   // Nav: mês
-  document.getElementById('prev-month').addEventListener('click', mesAnterior);
-  document.getElementById('next-month').addEventListener('click', proximoMes);
+  var btnPrev = document.getElementById('prev-month');
+  var btnNext = document.getElementById('next-month');
+  if (btnPrev) btnPrev.addEventListener('click', mesAnterior);
+  if (btnNext) btnNext.addEventListener('click', proximoMes);
   atualizarNavMes();
 
   // Nav: páginas
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    btn.addEventListener('click', () => navegar(btn.dataset.page));
+  document.querySelectorAll('.nav-item').forEach(function(btn) {
+    btn.addEventListener('click', function() { navegar(btn.dataset.page); });
   });
 
   // Avatar → perfil
-  document.getElementById('avatar-btn').addEventListener('click', () => navegar('perfil'));
+  var avatarBtn = document.getElementById('avatar-btn');
+  if (avatarBtn) avatarBtn.addEventListener('click', function() { navegar('perfil'); });
 
   // FAB → abre modal
-  document.getElementById('fab').addEventListener('click', () => abrirModalLancamento('saida'));
+  var fab = document.getElementById('fab');
+  if (fab) fab.addEventListener('click', function() { abrirModalLancamento('saida'); });
 
   // Modal: lançamento
-  document.getElementById('close-lancamento').addEventListener('click', fecharModalLancamento);
-  document.getElementById('btn-salvar-lancamento').addEventListener('click', salvarLancamento);
-  document.getElementById('modal-lancamento').addEventListener('click', fecharModalAoClicarFora);
+  var closeL = document.getElementById('close-lancamento');
+  var saveL  = document.getElementById('btn-salvar-lancamento');
+  var modalL = document.getElementById('modal-lancamento');
+  if (closeL) closeL.addEventListener('click', fecharModalLancamento);
+  if (saveL)  saveL.addEventListener('click', salvarLancamento);
+  if (modalL) modalL.addEventListener('click', fecharModalAoClicarFora);
 
   // Modal: tipo toggle
-  document.querySelectorAll('.tipo-btn').forEach(btn => {
-    btn.addEventListener('click', () => setTipoLancamento(btn.dataset.tipo));
+  document.querySelectorAll('.tipo-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { setTipoLancamento(btn.dataset.tipo); });
   });
 
   // Modal: meta
-  document.getElementById('btn-edit-meta').addEventListener('click', abrirModalMeta);
-  document.getElementById('close-meta').addEventListener('click', () => {
-    document.getElementById('modal-meta').classList.remove('open');
-  });
-  document.getElementById('btn-salvar-meta').addEventListener('click', salvarMeta);
-  document.getElementById('modal-meta').addEventListener('click', fecharModalAoClicarFora);
+  var btnMeta   = document.getElementById('btn-edit-meta');
+  var closeMeta = document.getElementById('close-meta');
+  var saveMeta  = document.getElementById('btn-salvar-meta');
+  var modalMeta = document.getElementById('modal-meta');
+  if (btnMeta)   btnMeta.addEventListener('click', abrirModalMeta);
+  if (closeMeta) closeMeta.addEventListener('click', function() { modalMeta && modalMeta.classList.remove('open'); });
+  if (saveMeta)  saveMeta.addEventListener('click', salvarMeta);
+  if (modalMeta) modalMeta.addEventListener('click', fecharModalAoClicarFora);
 
   // Modal: confirmação exclusão
-  document.getElementById('close-confirm').addEventListener('click', () => {
-    document.getElementById('modal-confirm').classList.remove('open');
-  });
-  document.getElementById('btn-cancel-confirm').addEventListener('click', () => {
-    document.getElementById('modal-confirm').classList.remove('open');
-  });
-  document.getElementById('btn-ok-confirm').addEventListener('click', confirmarExclusao);
-  document.getElementById('modal-confirm').addEventListener('click', fecharModalAoClicarFora);
+  var closeConf  = document.getElementById('close-confirm');
+  var cancelConf = document.getElementById('btn-cancel-confirm');
+  var okConf     = document.getElementById('btn-ok-confirm');
+  var modalConf  = document.getElementById('modal-confirm');
+  if (closeConf)  closeConf.addEventListener('click',  function() { modalConf && modalConf.classList.remove('open'); });
+  if (cancelConf) cancelConf.addEventListener('click', function() { modalConf && modalConf.classList.remove('open'); });
+  if (okConf)     okConf.addEventListener('click', confirmarExclusao);
+  if (modalConf)  modalConf.addEventListener('click', fecharModalAoClicarFora);
 
-  // Ver todos → navega para lançamentos
-  document.getElementById('btn-ver-todos').addEventListener('click', () => navegar('lancamentos'));
+  // Ver todos
+  var btnVerTodos = document.getElementById('btn-ver-todos');
+  if (btnVerTodos) btnVerTodos.addEventListener('click', function() { navegar('lancamentos'); });
 
   // Filtros de tipo
-  document.getElementById('filter-tabs').addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-tab');
-    if (!btn) return;
-    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    estado.filtroLancamentos = btn.dataset.filter;
-    renderizarLancamentosFull();
-  });
+  var filterTabs = document.getElementById('filter-tabs');
+  if (filterTabs) {
+    filterTabs.addEventListener('click', function(e) {
+      var btn = e.target.closest('.filter-tab');
+      if (!btn) return;
+      document.querySelectorAll('.filter-tab').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      estado.filtroLancamentos = btn.dataset.filter;
+      renderizarLancamentosFull();
+    });
+  }
 
   // Cartão
-  document.getElementById('btn-salvar-cartao').addEventListener('click', salvarCartao);
-  document.getElementById('btn-add-fatura').addEventListener('click', () => {
-    abrirModalLancamento('saida');
-    // Pré-seleciona cartão
-    setTimeout(() => {
-      document.getElementById('input-cartao').checked = true;
-    }, 350);
-  });
+  var btnSalvarCartao = document.getElementById('btn-salvar-cartao');
+  var btnAddFatura    = document.getElementById('btn-add-fatura');
+  if (btnSalvarCartao) btnSalvarCartao.addEventListener('click', salvarCartao);
+  if (btnAddFatura) {
+    btnAddFatura.addEventListener('click', function() {
+      abrirModalLancamento('saida');
+      setTimeout(function() {
+        var el = document.getElementById('input-cartao');
+        if (el) el.checked = true;
+      }, 350);
+    });
+  }
 
   // Perfil
-  document.getElementById('btn-salvar-perfil').addEventListener('click', salvarPerfil);
-  document.getElementById('btn-exportar').addEventListener('click', exportarDados);
-  document.getElementById('btn-limpar').addEventListener('click', limparDados);
+  var btnSalvarPerfil = document.getElementById('btn-salvar-perfil');
+  var btnExportar     = document.getElementById('btn-exportar');
+  var btnLimpar       = document.getElementById('btn-limpar');
+  if (btnSalvarPerfil) btnSalvarPerfil.addEventListener('click', salvarPerfil);
+  if (btnExportar)     btnExportar.addEventListener('click', exportarDados);
+  if (btnLimpar)       btnLimpar.addEventListener('click', limparDados);
 
   // Carrega dados
   carregarPerfil();
   renderizarTudo();
 
-  // Mostra o app após o splash
-  const app = document.getElementById('app');
-  app.classList.remove('hidden');
-  setTimeout(() => app.classList.add('visible'), 100);
-
-  // Registra service worker (PWA)
+  // Registra service worker
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(err => {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js').catch(function(err) {
         console.warn('SW não registrado:', err);
       });
     });
@@ -769,4 +803,8 @@ function init() {
 }
 
 // Inicia quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

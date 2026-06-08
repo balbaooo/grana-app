@@ -71,6 +71,35 @@
           <!-- gerado pelo JS -->
         </div>
 
+        <!-- Comparativo com mês anterior -->
+        <div class="section-header" style="margin-top:24px">
+          <span class="section-title">Comparativo</span>
+          <span class="comp-badge" id="comp-badge"></span>
+        </div>
+        <div class="comp-card" id="comp-card">
+          <div class="comp-row">
+            <div class="comp-item">
+              <span class="comp-label" id="comp-mes-ant">Mês anterior</span>
+              <span class="comp-val" id="comp-ant-val">R$ 0,00</span>
+            </div>
+            <div class="comp-arrow" id="comp-arrow">→</div>
+            <div class="comp-item">
+              <span class="comp-label">Este mês</span>
+              <span class="comp-val" id="comp-atual-val">R$ 0,00</span>
+            </div>
+          </div>
+          <p class="comp-msg" id="comp-msg">Registre gastos para ver o comparativo.</p>
+        </div>
+
+        <!-- Gráfico por categoria -->
+        <div class="section-header" style="margin-top:24px">
+          <span class="section-title">Gastos por categoria</span>
+        </div>
+        <div class="chart-card" id="chart-card">
+          <canvas id="chart-donut" width="160" height="160"></canvas>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
+
         <!-- Últimos lançamentos -->
         <div class="section-header" style="margin-top:24px">
           <span class="section-title">Últimos lançamentos</span>

@@ -145,7 +145,9 @@ function nextMes() {
 // ============================================
 function renderAll() {
   renderResumo();
-  renderCatGrid();
+  renderCatGridComAlerta();
+  renderComparativo();
+  renderGrafico();
   renderLancsRecentes();
   renderLancsFull();
   renderCartao();
@@ -717,4 +719,228 @@ if (document.readyState==='loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+// ============================================
+// FASE 1: COMPARATIVO + GRÁFICO + ALERTAS
+// ============================================
+
+/** Retorna lançamentos de um mês/ano específico */
+function getLancsDe(mes, ano) {
+  return getLancs().filter(function(l) {
+    const p = l.data.split('-');
+    return parseInt(p[1]) === mes+1 && parseInt(p[0]) === ano;
+  });
+}
+
+/** Total de saídas de um array de lançamentos */
+function totalSaidas(ls) {
+  return ls.filter(function(l){ return l.tipo==='saida'; })
+           .reduce(function(s,l){ return s+l.valor; }, 0);
+}
+
+/** Renderiza o comparativo com mês anterior */
+function renderComparativo() {
+  // Calcula mês anterior
+  let mesAnt = estado.mes - 1;
+  let anoAnt = estado.ano;
+  if (mesAnt < 0) { mesAnt = 11; anoAnt--; }
+
+  const lsAtual = getLancsDe(estado.mes, estado.ano);
+  const lsAnt   = getLancsDe(mesAnt, anoAnt);
+
+  const totalAtual = totalSaidas(lsAtual);
+  const totalAnt   = totalSaidas(lsAnt);
+
+  const elAntVal   = document.getElementById('comp-ant-val');
+  const elAtualVal = document.getElementById('comp-atual-val');
+  const elMsg      = document.getElementById('comp-msg');
+  const elBadge    = document.getElementById('comp-badge');
+  const elMesAnt   = document.getElementById('comp-mes-ant');
+
+  if (elMesAnt) elMesAnt.textContent = MESES[mesAnt];
+  if (elAntVal)   elAntVal.textContent   = fmtBRL(totalAnt);
+  if (elAtualVal) elAtualVal.textContent = fmtBRL(totalAtual);
+
+  if (!elMsg || !elBadge) return;
+
+  if (totalAnt === 0 && totalAtual === 0) {
+    elMsg.textContent = 'Registre gastos para ver o comparativo.';
+    elMsg.className   = 'comp-msg';
+    elBadge.textContent = '';
+    elBadge.className   = 'comp-badge';
+    return;
+  }
+
+  if (totalAnt === 0) {
+    elMsg.textContent = 'Primeiro mês com dados 🎉';
+    elMsg.className   = 'comp-msg';
+    elBadge.textContent = 'novo';
+    elBadge.className   = 'comp-badge igual';
+    return;
+  }
+
+  const diff    = totalAtual - totalAnt;
+  const diffPct = Math.abs(Math.round((diff / totalAnt) * 100));
+
+  if (diff > 0) {
+    elMsg.textContent = '↑ Você gastou ' + diffPct + '% a mais que ' + MESES[mesAnt] + '. Fique de olho!';
+    elMsg.className   = 'comp-msg negativo';
+    elBadge.textContent = '+' + diffPct + '%';
+    elBadge.className   = 'comp-badge up';
+  } else if (diff < 0) {
+    elMsg.textContent = '↓ Parabéns! Gastou ' + diffPct + '% a menos que ' + MESES[mesAnt] + ' 💚';
+    elMsg.className   = 'comp-msg positivo';
+    elBadge.textContent = '-' + diffPct + '%';
+    elBadge.className   = 'comp-badge down';
+  } else {
+    elMsg.textContent = 'Gastos iguais ao mês anterior.';
+    elMsg.className   = 'comp-msg';
+    elBadge.textContent = '=';
+    elBadge.className   = 'comp-badge igual';
+  }
+}
+
+/** Desenha o gráfico de donut no canvas */
+function renderGrafico() {
+  const canvas = document.getElementById('chart-donut');
+  const legend = document.getElementById('chart-legend');
+  if (!canvas || !legend) return;
+
+  const ls   = getLancsMes().filter(function(l){ return l.tipo==='saida'; });
+  const cats = getCats();
+
+  if (!ls.length) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    legend.innerHTML = '<p class="chart-empty">Nenhum gasto ainda</p>';
+    return;
+  }
+
+  // Agrupa por categoria
+  const grupos = {};
+  ls.forEach(function(l) {
+    if (!grupos[l.catId]) grupos[l.catId] = 0;
+    grupos[l.catId] += l.valor;
+  });
+
+  const total = Object.keys(grupos).reduce(function(s,k){ return s+grupos[k]; }, 0);
+
+  // Ordena por valor
+  const items = Object.keys(grupos)
+    .map(function(id) {
+      const cat = cats.find(function(c){ return c.id===id; }) || {nome:'Outros', cor:'#888', emoji:'📦'};
+      return { id:id, nome:cat.nome, cor:cat.cor, emoji:cat.emoji, val:grupos[id] };
+    })
+    .sort(function(a,b){ return b.val-a.val; });
+
+  // Desenha donut
+  const ctx    = canvas.getContext('2d');
+  const cx     = canvas.width / 2;
+  const cy     = canvas.height / 2;
+  const radius = 68;
+  const inner  = 42;
+  let angle    = -Math.PI / 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  items.forEach(function(item) {
+    const slice = (item.val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = item.cor;
+    ctx.fill();
+    angle += slice;
+  });
+
+  // Furo central
+  ctx.beginPath();
+  ctx.arc(cx, cy, inner, 0, Math.PI * 2);
+  ctx.fillStyle = '#161616';
+  ctx.fill();
+
+  // Texto central
+  ctx.fillStyle = '#f5f5f5';
+  ctx.font = 'bold 11px Plus Jakarta Sans, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(fmtBRL(total).replace('R$','').trim(), cx, cy);
+
+  // Legenda
+  const topItems = items.slice(0, 5);
+  legend.innerHTML = topItems.map(function(item) {
+    const pct = Math.round((item.val / total) * 100);
+    return '<div class="legend-item">' +
+      '<div class="legend-dot" style="background:'+item.cor+'"></div>' +
+      '<span class="legend-name">'+item.emoji+' '+item.nome+'</span>' +
+      '<span class="legend-pct">'+pct+'%</span>' +
+    '</div>';
+  }).join('');
+}
+
+/** Atualiza os cards de categoria com alertas visuais */
+function renderCatGridComAlerta() {
+  const grid = document.getElementById('cat-grid');
+  if (!grid) return;
+  const cats = getCats();
+  const ls   = getLancsMes().filter(function(l){ return l.tipo==='saida'; });
+
+  let html = '';
+  cats.forEach(function(cat) {
+    const total = ls.filter(function(l){ return l.catId===cat.id; })
+                    .reduce(function(s,l){ return s+l.valor; }, 0);
+    const limite    = cat.limite || 0;
+    const pct       = limite>0 ? Math.min(100,(total/limite)*100) : 0;
+    const cor       = cat.cor || '#888';
+    const overLimit = limite>0 && total>limite;
+    const nearLimit = limite>0 && pct>=80 && !overLimit;
+
+    // Classes de alerta
+    let cardClass = 'cat-card';
+    if (overLimit) cardClass += ' alerta-limite';
+    else if (nearLimit) cardClass += ' alerta-aviso';
+
+    // Badge de alerta
+    let alertBadge = '';
+    if (overLimit)  alertBadge = '<span class="cat-alert-badge red">⚠️ Limite ultrapassado</span>';
+    else if (nearLimit) alertBadge = '<span class="cat-alert-badge yellow">⚡ '+Math.round(pct)+'% do limite</span>';
+
+    html += '<div class="'+cardClass+'" data-cat="'+cat.id+'">' +
+      '<div class="cat-card-top">' +
+        '<div class="cat-emoji" style="background:'+cor+'20">'+cat.emoji+'</div>' +
+        '<button class="cat-card-edit" data-edit="'+cat.id+'" aria-label="Editar">✏️</button>' +
+      '</div>' +
+      '<span class="cat-card-name">'+cat.nome+'</span>' +
+      '<span class="cat-card-value" style="color:'+(overLimit?'var(--red)':cor)+'">'+fmtBRL(total)+'</span>' +
+      (limite>0
+        ? '<div class="cat-progress-bar"><div class="cat-progress-fill" style="width:'+pct+'%;background:'+(overLimit?'var(--red)':nearLimit?'#f59e0b':cor)+'"></div></div>' +
+          '<span class="cat-limit-text">limite '+fmtBRL(limite)+'</span>' +
+          alertBadge
+        : '<span class="cat-limit-text">Sem limite</span>') +
+    '</div>';
+  });
+
+  html += '<div class="cat-card-add" id="btn-add-cat-card"><span>+</span><p>Nova categoria</p></div>';
+  grid.innerHTML = html;
+
+  // Clique no card
+  grid.querySelectorAll('.cat-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('.cat-card-edit')) return;
+      abrirModalLanc('saida', card.dataset.cat);
+    });
+  });
+
+  // Clique editar
+  grid.querySelectorAll('.cat-card-edit').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      abrirModalCat(btn.dataset.edit);
+    });
+  });
+
+  const addBtn = document.getElementById('btn-add-cat-card');
+  if (addBtn) addBtn.addEventListener('click', function(){ abrirModalCat(null); });
 }
